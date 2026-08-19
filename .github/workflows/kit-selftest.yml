@@ -140,7 +140,7 @@ jobs:
       - name: Validator catches drift, lost placeholders, overflow
         run: |
           cd /tmp
-          V=$GITHUB_WORKSPACE/stacks/shared/skills/i18n-translator/scripts/validate.py
+          V=$GITHUB_WORKSPACE/skills/i18n-translator/scripts/validate.py
           printf '{"a":"Accedi","b":"Ciao {name}","c":" e poi"}\n'   > src.json
           printf '{"a":"Log in","b":"Hi {name}","c":" then"}\n'      > ok.json
           printf '{"a":"Authenticate now","b":"Hi {nome}"}\n'        > bad.json
