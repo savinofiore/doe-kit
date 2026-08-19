@@ -122,7 +122,7 @@ this repo and nowhere else. Two ways they run:
 - Claude loads one on its own when your request matches its `description`. That is why every
   skill here has a description written as trigger conditions rather than a summary.
 
-The skill bodies cost nothing until they load, so having fourteen of them installed does not
+The skill bodies cost nothing until they load, so having a dozen-plus of them installed does not
 tax the context window.
 
 **Names are chosen to avoid collisions.** Precedence in Claude Code is enterprise → personal →
