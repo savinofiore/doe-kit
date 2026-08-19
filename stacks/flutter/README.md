@@ -67,6 +67,42 @@ Details and the rules for both lists: [../../docs/coverage-gate.md](../../docs/c
 - **No user-visible hardcoded strings** — the localisation call, with the keys present in the
   translation files.
 
+## Stack skills
+
+Five skills ship with this stack. Each one states where it sits in the DOE loop, because a
+skill that writes to `lib/` outside an approved directive is a skill the guard will refuse —
+and that refusal is the point.
+
+| Skill | Runs | Writes code? |
+|---|---|---|
+| `riverpod-architect` | **before** `/directive` — designs the state, produces the use-case list that becomes the Test Contract | no |
+| `scaffold-feature` | **inside** `/execute NN` — tests first, then model → repository → state → provider → view | yes, under an APPROVED directive |
+| `fix-style` | **Track B** of `/review-fix` — the non-testable findings | yes, outside the gate |
+| `test-plan` | any time — reads the branch diff, writes a manual checklist | no (only `.test/`) |
+| `test-run` | after `test-plan` — drives a running app through the checklist | no |
+
+The pipeline they form:
+
+```
+riverpod-architect → /directive → [approve] → /execute (scaffold-feature) → /review → /review-fix (fix-style)
+                                                        ↑ tests first, RED before GREEN
+```
+
+## Conventions file (required by three of them)
+
+`scaffold-feature`, `fix-style` and `riverpod-architect` read `.doe/conventions.json` — your
+token classes, paths, naming rules, state patterns and i18n setup. The installer drops
+`conventions.example.json` next to it; copy and fill it.
+
+```bash
+cp .doe/conventions.example.json .doe/conventions.json
+```
+
+**They refuse to run without it, on purpose.** A style skill that guesses your design system
+produces fixes that compile and are wrong — which is strictly worse than no fix, because it
+looks done. The example file carries one real project's values as illustration; none of them
+are a standard, and any section you delete simply turns that rule off.
+
 ## Beyond the gate: manual QA
 
 Unit tests cannot see navigation, layout or a real device. Two skills cover that ground without

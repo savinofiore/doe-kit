@@ -1,0 +1,130 @@
+{
+  "_comment": [
+    "Project conventions for the Flutter stack skills (scaffold-feature, fix-style,",
+    "riverpod-architect). Copy to .doe/conventions.json and fill in with YOUR names.",
+    "",
+    "The skills read this file instead of hardcoding a design system. Every value below",
+    "is an example from one real project — none of it is a standard. If a section does",
+    "not apply to your project, delete it: a skill that finds no rule reports nothing",
+    "rather than inventing one."
+  ],
+
+  "package": "myapp",
+
+  "paths": {
+    "models": "lib/models/<domain>/",
+    "repositories": "lib/repositories/",
+    "state": "lib/providers/<domain>/",
+    "pages": "lib/pages/<domain>/",
+    "components": "lib/components/",
+    "componentsLocal": "lib/pages/<domain>/components/",
+    "providerRegistry": "lib/providers/providers.dart",
+    "routes": "lib/providers/route/route_provider.dart",
+    "translations": "assets/translations/en.json",
+    "tests": "test/"
+  },
+
+  "naming": {
+    "componentPrefix": "K",
+    "pageSuffix": "Page",
+    "repositorySuffix": "Repository",
+    "pageRequiresStaticPath": true,
+    "fileCase": "snake_case",
+    "comment": "componentPrefix null disables the prefix rule entirely."
+  },
+
+  "tokens": {
+    "colors": {
+      "class": "KColors",
+      "callForm": "{class}.{member}(context)",
+      "roles": {
+        "buttonBackground": "getInteractivePrimaryColor",
+        "buttonDisabled": "getInteractiveDisabledColor",
+        "cardBackground": "getBackgroundCardColor",
+        "screenBackground": "getBackgroundScreenColor",
+        "textPrimary": "getContentPrimaryColor",
+        "textSecondary": "getContentSecondaryColor",
+        "border": "getBorderPrimaryColor",
+        "success": "getAccentSuccessColor",
+        "error": "getAccentErrorColor"
+      },
+      "import": "package:myapp/themes/k_colors.dart",
+      "allowed": ["Colors.transparent"]
+    },
+
+    "textStyles": {
+      "class": "KTextStyles",
+      "callForm": "{class}.{member}(context)",
+      "bySize": {
+        "48": "titleModal",
+        "32": "titleScreen",
+        "24": "titleSection",
+        "20": "titleSubsection",
+        "16": "body",
+        "14": "titleGroup",
+        "12": "bodySmall"
+      },
+      "import": "package:myapp/themes/k_text_styles.dart",
+      "comment": "A .copyWith() on top of a token is allowed; a bare TextStyle(...) is not."
+    },
+
+    "radii": {
+      "class": "KBorderRadius",
+      "byValue": {
+        "4": "extraSmall",
+        "8": "small",
+        "12": "medium",
+        "16": "large",
+        "24": "extraLarge",
+        "100": "button"
+      },
+      "import": "package:myapp/themes/k_border_radius.dart"
+    },
+
+    "sizing": {
+      "library": "flutter_screenutil",
+      "import": "package:flutter_screenutil/flutter_screenutil.dart",
+      "width": ".w",
+      "height": ".h",
+      "fontSize": ".sp",
+      "radius": ".w",
+      "allowed": ["double.infinity", "MediaQuery.of(context).size", "0"],
+      "comment": "Set library to null when the project sizes things directly."
+    }
+  },
+
+  "state": {
+    "library": "riverpod",
+    "codegen": false,
+    "registry": "lib/providers/providers.dart",
+    "patterns": {
+      "simpleValue": "StateProvider",
+      "listCrud": "StateNotifier<List<T>>",
+      "listPaginated": "StateNotifier<PageableListState<T>>",
+      "complexWithDeps": "Notifier<CustomState>",
+      "complexStandalone": "StateNotifier<CustomState>",
+      "readOnlyFetch": "FutureProvider"
+    },
+    "sealedStates": true,
+    "comment": "codegen false means hand-written providers — no @riverpod, no build_runner."
+  },
+
+  "data": {
+    "transport": "dio",
+    "clientAccessor": "_ref.read(client).authenticated",
+    "errorType": "GenericError",
+    "modelContract": ["fromJson", "toJson", "copyWith"],
+    "jsonTypedef": "JSON",
+    "codegen": false
+  },
+
+  "i18n": {
+    "library": "easy_localization",
+    "call": ".tr()",
+    "import": "package:easy_localization/easy_localization.dart",
+    "files": ["assets/translations/en.json"],
+    "keyStyle": "<domain>.<key>"
+  },
+
+  "commentLanguage": "en"
+}

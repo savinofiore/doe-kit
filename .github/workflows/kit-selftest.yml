@@ -64,6 +64,35 @@ jobs:
           grep -q "hook already wired" second.txt
           grep -q "skip" second.txt
 
+      # Every skill needs frontmatter to be discoverable at all, and a skill that silently
+      # fails to load looks exactly like a skill the agent chose not to use.
+      - name: Installed skills have valid frontmatter
+        working-directory: /tmp/fixture
+        run: |
+          set -e
+          count=0
+          for f in .claude/skills/*/SKILL.md; do
+            head -1 "$f" | grep -q '^---$'      || { echo "no frontmatter: $f"; exit 1; }
+            sed -n '2p' "$f" | grep -q '^name:'  || { echo "no name: $f"; exit 1; }
+            sed -n '3p' "$f" | grep -q '^description:' || { echo "no description: $f"; exit 1; }
+            count=$((count + 1))
+          done
+          echo "$count skills, all with frontmatter"
+          [ "$count" -ge 9 ]
+
+      # Three of the Flutter skills refuse to run without .doe/conventions.json. If the
+      # example ever stops shipping, they fail closed on a real project instead of here.
+      - name: Stack conventions template ships and parses
+        if: matrix.stack == 'flutter'
+        working-directory: /tmp/fixture
+        run: |
+          test -f .doe/conventions.example.json
+          python3 -c "import json,sys; json.load(open('.doe/conventions.example.json'))"
+          test ! -f .doe/conventions.json   # never pre-filled: a guessed design system is worse than none
+          for s in riverpod-architect scaffold-feature fix-style test-plan test-run; do
+            test -f ".claude/skills/$s/SKILL.md" || { echo "missing skill: $s"; exit 1; }
+          done
+
   i18n-validator:
     runs-on: ubuntu-latest
     steps:

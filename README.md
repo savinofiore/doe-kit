@@ -47,6 +47,17 @@ Stacks: **`web-ts`** (TypeScript · Vitest · tsc · eslint) · **`flutter`** (D
 · analyze). Adding one is a `run.sh` and a `coverage.sh` — see
 [stacks/README.md](stacks/README.md).
 
+The Flutter stack also ships the feature pipeline — design the state, spec it, scaffold it
+tests-first, review it, fix what no test can see:
+
+```
+riverpod-architect → /directive → [approve] → /execute (scaffold-feature) → /review → /review-fix (fix-style)
+```
+
+Those three skills read your token names from `.doe/conventions.json` and **refuse to run
+without it**: a style skill that guesses your design system produces fixes that compile and are
+wrong, which is worse than no fix because it looks done.
+
 ---
 
 ## What is in the box
@@ -58,8 +69,10 @@ core/
 └── execution/       directive_guard.py · guard_selftest.py     (stack-agnostic)
 
 stacks/
-├── web-ts/          run.sh · coverage.sh · coverage-check.mjs · settings.json · skills
-└── flutter/         run.sh · coverage.sh · settings.json · skills
+├── web-ts/          run.sh · coverage.sh · coverage-check.mjs + frontend/backend standards
+├── flutter/         run.sh · coverage.sh + riverpod-architect · scaffold-feature · fix-style
+│                    · test-plan · test-run, driven by .doe/conventions.json
+└── shared/          ui-standards · i18n-translator (+ a validator that fails CI)
 
 docs/
 ├── methodology.md   the three levels, the three flows, the red-test rule

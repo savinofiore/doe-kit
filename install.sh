@@ -28,6 +28,7 @@ STACK=""
 TARGET=""
 FORCE=0
 DRY=0
+NEEDS_CONVENTIONS=0
 
 usage() {
   sed -n '3,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -94,6 +95,15 @@ done
 for t in "$KIT/core/templates/"*.md; do
   copy "$t" "$TARGET/.doe/directives/$(basename "$t")"
 done
+
+# Convention template, when the stack ships one. Deliberately copied as `.example.json`:
+# the stack skills refuse to run without `.doe/conventions.json`, and a half-filled config
+# naming another project's design tokens is worse than no config — it produces "fixes" that
+# compile and are wrong.
+if [[ -f "$STACK_DIR/conventions.example.json" ]]; then
+  copy "$STACK_DIR/conventions.example.json" "$TARGET/.doe/conventions.example.json"
+  NEEDS_CONVENTIONS=1
+fi
 
 # The method doc travels with the project: the agent reads .doe/README.md, not this repo.
 if [[ -e "$TARGET/.doe/README.md" && $FORCE -eq 0 ]]; then
@@ -223,3 +233,17 @@ ${BOLD}Next steps${OFF}
 
   Emergency escape, outside the process:  export DOE_BYPASS=1
 EOF
+
+if [[ $NEEDS_CONVENTIONS -eq 1 && ! -f "$TARGET/.doe/conventions.json" ]]; then
+  cat <<EOF
+
+${YELLOW}${BOLD}One more thing${OFF} — the stack skills need your project's conventions:
+
+    cp .doe/conventions.example.json .doe/conventions.json
+    \$EDITOR .doe/conventions.json
+
+  Fill in YOUR token classes, paths and naming rules. ${BOLD}scaffold-feature${OFF},
+  ${BOLD}fix-style${OFF} and ${BOLD}riverpod-architect${OFF} refuse to run without it, on purpose:
+  guessing a design system produces fixes that compile and are wrong.
+EOF
+fi
