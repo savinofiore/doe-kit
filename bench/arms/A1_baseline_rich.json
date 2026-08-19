@@ -1,0 +1,7 @@
+{
+  "id": "A1_baseline_rich",
+  "description": "Unstructured, but told to spend: tests first, then two self-review passes. Tests H1 without the DOE structure.",
+  "prompt_suffix": "arms/prompts/baseline_rich.md",
+  "approvals": 0,
+  "timeout": 3600
+}

@@ -1,0 +1,8 @@
+{
+  "id": "A2_doe",
+  "description": "The full kit: directive, human approval, execute, gate.",
+  "setup": ["{kit}/install.sh --stack {stack} {workdir}"],
+  "prompt_suffix": "arms/prompts/doe.md",
+  "approvals": 1,
+  "timeout": 5400
+}
