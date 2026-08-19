@@ -1,0 +1,31 @@
+{
+  "name": "doe-kit",
+  "owner": {
+    "name": "Savino Fiore",
+    "url": "https://github.com/savinofiore"
+  },
+  "metadata": {
+    "description": "Directive-first, test-driven workflow for coding agents.",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "doe-kit",
+      "source": "./",
+      "description": "Directive-first, test-driven workflow. A PreToolUse hook blocks writes to your source tree until a directive is written and human-approved; /doe-kit:execute then drives it red-to-green through a deterministic gate. Run /doe-kit:init to set up a project.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Savino Fiore"
+      },
+      "homepage": "https://github.com/savinofiore/doe-kit",
+      "license": "MIT",
+      "keywords": [
+        "tdd",
+        "test-driven",
+        "code-review",
+        "workflow",
+        "hooks"
+      ]
+    }
+  ]
+}

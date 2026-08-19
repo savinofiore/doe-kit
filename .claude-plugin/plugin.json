@@ -1,0 +1,20 @@
+{
+  "name": "doe-kit",
+  "description": "Directive-first, test-driven workflow for coding agents. Blocks writes to your source tree until a spec is written and approved, then drives it red-to-green through a deterministic gate.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Savino Fiore"
+  },
+  "homepage": "https://github.com/savinofiore/doe-kit",
+  "repository": "https://github.com/savinofiore/doe-kit",
+  "license": "MIT",
+  "keywords": [
+    "tdd",
+    "test-driven",
+    "code-review",
+    "workflow",
+    "hooks",
+    "flutter",
+    "typescript"
+  ]
+}

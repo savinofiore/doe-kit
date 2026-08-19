@@ -1,0 +1,8 @@
+# Core DOE skills — installed with every stack.
+directive
+execute
+doe-review
+doe-review-fix
+diagnose
+delta-check
+port-commits

@@ -1,0 +1,3 @@
+# web-ts stack skills.
+frontend-standards
+backend-standards

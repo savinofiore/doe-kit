@@ -17,6 +17,10 @@ through an Edit tool. Without it, the whole process is bypassed by a redirection
 Outside the protected roots (docs, `.doe/`, config) nothing is blocked: the directive itself
 must be writable while the guard is armed.
 
+A project with no `.doe/` directory is not a DOE project, and the guard stays DORMANT there —
+essential when it is installed as a globally enabled plugin, since otherwise every unrelated
+project would open read-only.
+
 Configuration — `.doe/doe.config.json` at the repo root:
 
     { "protected_roots": ["lib", "test"] }
@@ -140,12 +144,48 @@ INTERPRETER_WRITE_HINTS = (
 GIT_WRITE_SUBCMDS = {"apply", "am"}
 
 
-def repo_root() -> Path:
-    """Repo root. `CLAUDE_PROJECT_DIR` when available, otherwise the script location."""
+def repo_root(cwd: Path | None = None) -> Path:
+    """
+    Repo root: `CLAUDE_PROJECT_DIR`, else the hook payload's cwd, else the script location.
+
+    The cwd fallback matters when the guard runs from a plugin install: the script then
+    lives in the plugin directory, nowhere near the project, so its own location is the
+    wrong answer.
+    """
     env = os.environ.get("CLAUDE_PROJECT_DIR")
     if env:
         return Path(env).resolve()
+    if cwd is not None:
+        return cwd
     return Path(__file__).resolve().parent.parent.parent
+
+
+def is_doe_project(root: Path) -> bool:
+    """
+    True when this project opted into DOE, i.e. it has a `.doe/` directory.
+
+    Without this the guard is unusable as a globally enabled plugin: every project that had
+    never heard of DOE would open read-only, because "no approved directive" and "not a DOE
+    project" would look identical. Opting in is creating `.doe/` (`/doe-kit:init` does it).
+    Opting out is deleting it — a deliberate, visible act, like DOE_BYPASS.
+    """
+    return (root / ".doe").is_dir()
+
+
+def cli_root() -> Path:
+    """
+    Project root for the CLI subcommands: walk up from the working directory looking for
+    `.doe/`. Falls back to `repo_root()` so a standalone install still answers from its own
+    location.
+    """
+    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env:
+        return Path(env).resolve()
+    here = Path.cwd().resolve()
+    for candidate in (here, *here.parents):
+        if (candidate / ".doe").is_dir():
+            return candidate
+    return repo_root()
 
 
 def directive_state(path: Path) -> str:
@@ -448,12 +488,16 @@ def handle_hook() -> None:
 
     tool_name = payload.get("tool_name", "")
     tool_input = payload.get("tool_input") or {}
-    root = repo_root()
-    roots = protected_roots(root)
-    roots_label = " and ".join(f"{r}/" for r in roots)
 
     cwd_raw = payload.get("cwd")
     cwd = Path(cwd_raw).resolve() if cwd_raw else None
+
+    root = repo_root(cwd)
+    if not is_doe_project(root):
+        allow()
+
+    roots = protected_roots(root)
+    roots_label = " and ".join(f"{r}/" for r in roots)
 
     if tool_name == "Bash":
         command = tool_input.get("command") or ""
@@ -500,7 +544,7 @@ def handle_hook() -> None:
 
 
 def handle_status() -> None:
-    root = repo_root()
+    root = cli_root()
     roots = protected_roots(root)
     directives = list_directives(root)
     approved = [p for p, s in directives if s == "APPROVED"]
@@ -519,7 +563,10 @@ def handle_status() -> None:
             print(f"  - {path.name:<40} STATE: {state}")
     print()
 
-    if os.environ.get("DOE_BYPASS") == "1":
+    if not is_doe_project(root):
+        print("GUARD: DORMANT — no .doe/ directory, so this is not a DOE project.")
+        print("       Nothing is blocked. Run /doe-kit:init (or install.sh) to opt in.")
+    elif os.environ.get("DOE_BYPASS") == "1":
         print("GUARD: BYPASSED — protected roots are writable (emergency escape).")
     elif approved:
         names = ", ".join(p.name for p in approved)
@@ -530,7 +577,7 @@ def handle_status() -> None:
 
 def handle_explain(command: str) -> None:
     """Shows how the guard reads a command, without running it."""
-    root = repo_root()
+    root = cli_root()
     roots = protected_roots(root)
     writes = find_writes(command, root, roots)
     print(f"command: {command}")

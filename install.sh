@@ -2,7 +2,11 @@
 #
 # DOE Kit installer.
 #
-#   ./install.sh --stack web-ts  /path/to/project
+# One-liner (clones itself into a temp dir, then installs into the current directory):
+#   curl -fsSL https://raw.githubusercontent.com/savinofiore/doe-kit/main/install.sh | bash -s -- --stack flutter
+#
+# From a clone:
+#   ./install.sh --stack web-ts             # installs into the current directory
 #   ./install.sh --stack flutter /path/to/project
 #   ./install.sh --stack web-ts --dry-run .
 #
@@ -19,7 +23,21 @@
 
 set -euo pipefail
 
-KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KIT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+
+REPO_URL="${DOE_KIT_REPO:-https://github.com/savinofiore/doe-kit.git}"
+REPO_REF="${DOE_KIT_REF:-main}"
+
+# Piped from curl: the "script directory" is wherever bash was launched, not a checkout.
+# Detect it by looking for a file only the real kit has, and clone if it is missing.
+if [[ -z "$KIT" || ! -f "$KIT/core/execution/directive_guard.py" ]]; then
+  command -v git >/dev/null 2>&1 || { echo "doe-kit: git is required" >&2; exit 69; }
+  KIT="$(mktemp -d)/doe-kit"
+  echo "fetching doe-kit ($REPO_REF)..."
+  git clone --quiet --depth 1 --branch "$REPO_REF" "$REPO_URL" "$KIT" \
+    || { echo "doe-kit: could not clone $REPO_URL" >&2; exit 69; }
+  trap 'rm -rf "$(dirname "$KIT")"' EXIT
+fi
 
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'; BOLD=$'\033[1m'; OFF=$'\033[0m'
 if [[ ! -t 1 ]]; then RED=""; GREEN=""; YELLOW=""; BOLD=""; OFF=""; fi
@@ -48,7 +66,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$STACK"  ]] || { echo "${RED}--stack is required${OFF}" >&2; usage; exit 64; }
-[[ -n "$TARGET" ]] || { echo "${RED}target project path is required${OFF}" >&2; usage; exit 64; }
+TARGET="${TARGET:-.}"   # the one-liner runs inside the project it is installing into
 
 STACK_DIR="$KIT/stacks/$STACK"
 [[ -d "$STACK_DIR" && "$STACK" != "shared" ]] \
@@ -147,21 +165,25 @@ fi
 echo
 echo "${BOLD}.claude/skills/${OFF}"
 
-for d in "$KIT/core/skills/"*/; do
-  copy "${d%/}" "$TARGET/.claude/skills/$(basename "${d%/}")"
-done
+# Every skill lives once, in $KIT/skills/. Each level's skills.txt says which of them it
+# installs, so the plugin (which loads them all) and this installer never drift apart.
+install_skills_from() {
+  local manifest="$1" name
+  [[ -f "$manifest" ]] || return 0
+  while IFS= read -r name; do
+    name="${name%%#*}"; name="${name// /}"
+    [[ -z "$name" ]] && continue
+    if [[ ! -d "$KIT/skills/$name" ]]; then
+      echo "  ${RED}missing${OFF} skill '$name' listed in ${manifest#$KIT/}" >&2
+      continue
+    fi
+    copy "$KIT/skills/$name" "$TARGET/.claude/skills/$name"
+  done < "$manifest"
+}
 
-for d in "$KIT/stacks/shared/skills/"*/; do
-  [[ -d "$d" ]] || continue
-  copy "${d%/}" "$TARGET/.claude/skills/$(basename "${d%/}")"
-done
-
-if [[ -d "$STACK_DIR/skills" ]]; then
-  for d in "$STACK_DIR/skills/"*/; do
-    [[ -d "$d" ]] || continue
-    copy "${d%/}" "$TARGET/.claude/skills/$(basename "${d%/}")"
-  done
-fi
+install_skills_from "$KIT/core/skills.txt"
+install_skills_from "$KIT/stacks/shared/skills.txt"
+install_skills_from "$STACK_DIR/skills.txt"
 
 # ── .claude/settings.json (merge) ───────────────────────────────────────────────
 

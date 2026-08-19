@@ -1,0 +1,3 @@
+# Stack-agnostic convention skills — installed with every stack.
+ui-standards
+i18n-translator
