@@ -16,13 +16,13 @@ because a colour is hardcoded — the widget layer is outside the gate perimeter
 `.doe/README.md` § Test scope).
 
 So this skill is **Track B**: direct fixes, outside the gate, with `flutter analyze` as the
-only check. It is what `/review-fix` calls for the findings `/review` classified as
+only check. It is what `/doe-review-fix` calls for the findings `/doe-review` classified as
 non-testable.
 
 Two consequences worth being explicit about:
 
 - The directive-guard blocks writes to `lib/` unless a directive is APPROVED. Running this
-  skill outside `/review-fix` means either an approved directive is already active, or you set
+  skill outside `/doe-review-fix` means either an approved directive is already active, or you set
   `DOE_BYPASS=1` and know it.
 - Never route a style fix through a directive to "make it official". A Test Contract that
   cannot produce a red test is theatre, and it teaches everyone that the gate is negotiable.

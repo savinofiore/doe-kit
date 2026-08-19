@@ -43,6 +43,12 @@ cd /path/to/your/project
 Then just ask your agent to change something. It will be refused, and it will start the
 interview instead.
 
+Needs `python3` on `PATH` (standard library only) and `git`. In Claude Code the hook goes live
+immediately — the settings file watcher picks it up, no restart — and you can confirm it with
+`/hooks`. The skills install project-scoped under `.claude/skills/`, invoked as `/directive`,
+`/execute NN`, `/doe-review`, or loaded automatically when your request matches their
+description. Full walkthrough: [docs/adoption.md](docs/adoption.md).
+
 Stacks: **`web-ts`** (TypeScript · Vitest · tsc · eslint) · **`flutter`** (Dart · flutter test
 · analyze). Adding one is a `run.sh` and a `coverage.sh` — see
 [stacks/README.md](stacks/README.md).
@@ -51,7 +57,7 @@ The Flutter stack also ships the feature pipeline — design the state, spec it,
 tests-first, review it, fix what no test can see:
 
 ```
-riverpod-architect → /directive → [approve] → /execute (scaffold-feature) → /review → /review-fix (fix-style)
+riverpod-architect → /directive → [approve] → /execute (scaffold-feature) → /doe-review → /doe-review-fix (fix-style)
 ```
 
 Those three skills read your token names from `.doe/conventions.json` and **refuse to run
@@ -91,7 +97,7 @@ change, and each row must map to a declared behaviour change. During execution t
 touch *only* those tests. This is what makes "never edit a test to make it pass" mechanical
 instead of aspirational.
 
-**Findings classified by testability, not just severity.** `/review` splits findings into
+**Findings classified by testability, not just severity.** `/doe-review` splits findings into
 logic-testable (→ a directive with a regression test) and non-testable (→ a direct fix in the
 report). A gate that pretends to verify a colour token is a gate nobody believes.
 

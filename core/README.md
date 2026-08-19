@@ -16,8 +16,8 @@ core/
 |---|---|---|
 | `directive` | 1 | Interviews, writes `NN_name.md` at `STATE: DRAFT`. Writes **zero** code. |
 | `execute` | 2 | Runs an APPROVED directive: baseline → RED → fix → green gate → cleanup. |
-| `review` | — | Analysis only. Classifies findings by severity **and testability**; materialises one directive per tier. Edits nothing. |
-| `review-fix` | — | Applies a review on two tracks: DOE directives through the gate, direct fixes with `Edit`. |
+| `doe-review` | — | Analysis only. Classifies findings by severity **and testability**; materialises one directive per tier. Edits nothing. |
+| `doe-review-fix` | — | Applies a review on two tracks: DOE directives through the gate, direct fixes with `Edit`. |
 | `diagnose` | — | Three competing hypotheses, minimal logging, no fix until the logs confirm the cause. |
 | `delta-check` | — | Read-only pre-commit check on the branch diff. |
 | `port-commits` | — | Enumerate → plan → port atomically → coverage-check. Silent skips become impossible. |

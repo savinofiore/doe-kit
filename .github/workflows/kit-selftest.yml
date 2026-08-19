@@ -80,6 +80,22 @@ jobs:
           echo "$count skills, all with frontmatter"
           [ "$count" -ge 9 ]
 
+      # /review is the bundled alias for /code-review, and a project skill never overrides
+      # a bundled alias — it would be shadowed silently when typed. Same trap for any other
+      # bundled name.
+      - name: No skill name collides with a bundled command
+        working-directory: /tmp/fixture
+        run: |
+          set -e
+          RESERVED="review code-review simplify run init loop verify batch debug doctor dataviz"
+          for d in .claude/skills/*/; do
+            name=$(basename "$d")
+            for r in $RESERVED; do
+              [ "$name" = "$r" ] && { echo "skill '$name' collides with bundled '$r'"; exit 1; }
+            done
+          done
+          echo "no collisions"
+
       # Three of the Flutter skills refuse to run without .doe/conventions.json. If the
       # example ever stops shipping, they fail closed on a real project instead of here.
       - name: Stack conventions template ships and parses

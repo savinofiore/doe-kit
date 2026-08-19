@@ -20,7 +20,7 @@ required and start the interview below. No exceptions, not even for a one-line c
 ## Interview (produces the directive)
 
 1. **Opening** — ALWAYS ask first: **feature** or **bug**? It determines the flow and the
-   template. (`NN_review_<tier>.md` directives come from `/review`, template
+   template. (`NN_review_<tier>.md` directives come from `/doe-review`, template
    `00_REVIEW_TEMPLATE.md`.)
 2. **Context analysis** — analyse ALL production files involved, find ALL tests involved, and
    **run the baseline** (`.doe/execution/run.sh <path>`) BEFORE writing the directive. Pin the

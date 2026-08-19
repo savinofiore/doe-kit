@@ -1,7 +1,7 @@
 # REVIEW directive: [Tier] — [Branch]
 
 > Copy this file to `NN_review_<tier>.md` (progressive number) when the findings come from a
-> `/review`. **One directive per tier** (Critical/Major/Minor): it groups every **logic**
+> `/doe-review`. **One directive per tier** (Critical/Major/Minor): it groups every **logic**
 > finding of the same weight.
 > Only **logic, testable** findings land here. Non-testable findings (styling, copy,
 > responsive, a11y) do NOT go into a directive: they stay in the report as direct fixes.
@@ -18,7 +18,7 @@ STATE: DRAFT
 
 ## Type
 
-**review** — tier **[Critical | Major | Minor]**. Origin: `/review` on branch `[branch-name]`.
+**review** — tier **[Critical | Major | Minor]**. Origin: `/doe-review` on branch `[branch-name]`.
 
 ## Objective
 
@@ -107,5 +107,5 @@ enum value, transport error mapped incorrectly.
 
 ## Notes
 
-- Non-testable findings of the same tier stay in the report as direct fixes (`/review-fix` Track B).
+- Non-testable findings of the same tier stay in the report as direct fixes (`/doe-review-fix` Track B).
 - [Dependencies on other review directives, warnings]

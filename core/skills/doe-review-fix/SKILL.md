@@ -1,13 +1,13 @@
 ---
-name: review-fix
-description: Applies the findings of a prior /review on two tracks — DOE directives implemented test-first through the gate (logic findings), and direct edits for non-testable findings. Requires explicit user approval of which items to fix. Never combines review and fix in one pass.
+name: doe-review-fix
+description: Applies the findings of a prior /doe-review on two tracks — DOE directives implemented test-first through the gate (logic findings), and direct edits for non-testable findings. Requires explicit user approval of which items to fix. Never combines review and fix in one pass.
 ---
 
 # Review Fix — apply what the review found
 
 ## Prerequisite
 
-`/review` must have run in the same conversation (or the user must supply a review report
+`/doe-review` must have run in the same conversation (or the user must supply a review report
 explicitly). The review produces two outputs this skill consumes:
 
 - **Block A** — DOE directives `.doe/directives/NN_review_<tier>.md` (logic findings).
@@ -16,7 +16,7 @@ explicitly). The review produces two outputs this skill consumes:
 With no review to work from:
 
 1. Refuse to run.
-2. Tell the user to run `/review` first.
+2. Tell the user to run `/doe-review` first.
 3. Produce no edits.
 
 ## Two tracks
@@ -105,7 +105,7 @@ Plus:
 - **Track A is test-first:** never change logic code without a red test first, and never
   without a green gate. Never adapt a test to make it pass.
 - **Do not combine** with a fresh review. If the user asks for "review + fix", split it:
-  `/review` first, then `/review-fix`.
+  `/doe-review` first, then `/doe-review-fix`.
 - If static analysis or the gate introduces new errors, stop and ask. Do not auto-correct
   aggressively.
 - Delete a directive (L3) **only** after a green gate and a completed checklist.
@@ -114,4 +114,4 @@ Plus:
 
 Usage reports showed recurring cases where, during a review-only pass, the assistant started
 implementing unrequested fixes, forcing the user to interrupt and ask for a rollback. Formally
-splitting `/review` (analysis) from `/review-fix` (application) makes that pattern impossible.
+splitting `/doe-review` (analysis) from `/doe-review-fix` (application) makes that pattern impossible.

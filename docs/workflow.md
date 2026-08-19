@@ -84,7 +84,7 @@ that compounds: every bug you fix leaves behind the test that would have caught 
 
 ## Review: a branch before merge
 
-**You:** `/review`
+**You:** `/doe-review`
 
 The agent reads the diff against the base, runs static analysis, and classifies every finding
 twice: by **severity** (P10/P7/P4/P1) and by **testability**.
@@ -96,9 +96,9 @@ That second axis is the one that makes the review useful:
 - A hardcoded colour → **non-testable** → stays in the report as a direct fix. No test could
   turn red for it, and pretending otherwise builds a gate nobody believes.
 
-The review edits nothing. It ends with: *"Run `/review-fix`…"*.
+The review edits nothing. It ends with: *"Run `/doe-review-fix`…"*.
 
-**You:** `/review-fix` — "the Critical ones and the style fixes".
+**You:** `/doe-review-fix` — "the Critical ones and the style fixes".
 
 Two tracks run:
 

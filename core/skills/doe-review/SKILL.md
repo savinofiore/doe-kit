@@ -1,5 +1,5 @@
 ---
-name: review
+name: doe-review
 description: Analysis-only branch/PR review. Classifies findings by severity AND by testability, materialises one DOE directive per tier for the logic findings, and reports the non-testable ones as direct fixes. Never edits code. Use for "review this branch", "review my diff", "PR review".
 ---
 
@@ -16,16 +16,16 @@ description: Analysis-only branch/PR review. Classifies findings by severity AND
 - **Output** = a two-block markdown report (logic findings → DOE directives; non-testable
   findings → direct fixes) plus the materialised directives. Every issue must carry a concrete
   fix (a line of code or a precise instruction), but the fix is NOT applied.
-- **Close the report with:** "Run `/review-fix`: it will implement the directives through the
+- **Close the report with:** "Run `/doe-review-fix`: it will implement the directives through the
   DOE gate and apply the direct fixes. Or tell me which items to apply."
 
-If the user wants the fixes applied, they will ask explicitly via `/review-fix` in a later
+If the user wants the fixes applied, they will ask explicitly via `/doe-review-fix` in a later
 message. Never combine review and fix in one pass.
 
 ## DOE coherence (the keystone)
 
 The project forbids code changes without a DOE directive. The review respects that: **logic**
-findings are materialised as DOE directives that `/review-fix` will implement through the
+findings are materialised as DOE directives that `/doe-review-fix` will implement through the
 test-first gate. **Non-testable** findings stay as direct fixes tracked in the report.
 
 ### Classifying findings (logic-testable vs non-testable)
@@ -83,7 +83,7 @@ For every tier (Critical/Major/Minor) that holds at least one **logic-testable**
    - the Test Contract with **one regression test per finding** (test path mirroring the
      source path);
    - Files involved and the Fix section, from the suggestions.
-3. Do NOT write code or tests: the directive is spec only. `/review-fix` writes the real tests.
+3. Do NOT write code or tests: the directive is spec only. `/doe-review-fix` writes the real tests.
 
 Cosmetic findings and every non-testable finding generate no directive.
 
@@ -163,7 +163,7 @@ Every finding keeps its tier tag so severity survives the split.
 - File list with +/- stats, grouped by kind (UI, Logic, Models, Other)
 
 ## Block A — Logic findings → DOE directives
-Implemented by `/review-fix` through the test-first gate (red→green).
+Implemented by `/doe-review-fix` through the test-first gate (red→green).
 
 | Directive | Tier | Finding (`file:line`) | Problem | Suggestion |
 | --- | --- | --- | --- | --- |
@@ -172,7 +172,7 @@ Implemented by `/review-fix` through the test-first gate (red→green).
 Directives created: [list of files in `.doe/directives/`]
 
 ## Block B — Non-testable findings → direct fixes
-Applied by `/review-fix` with `Edit` (outside the gate, static analysis only).
+Applied by `/doe-review-fix` with `Edit` (outside the gate, static analysis only).
 
 ### Critical (P10)
 ### Major (P7)

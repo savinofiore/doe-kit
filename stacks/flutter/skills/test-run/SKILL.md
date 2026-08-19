@@ -213,7 +213,7 @@ with a suggested rewording.
 ## RULES (STRICT)
 
 - **Never modify application code.** Even an obvious bug goes in the report; applying it is the
-  user's call — or `/review-fix`'s, in a separate session.
+  user's call — or `/doe-review-fix`'s, in a separate session.
 - **Never start the app.** If it is not running or the automation server will not connect, stop
   with instructions.
 - **Never touch the original** `.test/<branch>.md`. Only the copy in `$REPORT_DIR/checklist.md`.

@@ -18,7 +18,7 @@ whole codebase. Meant as a gate before a commit or a PR.
 **NOT for:**
 
 - Applying fixes → the stack's auto-fix skill (lint) or style-fix skill (conventions).
-- A full review with a PR comment → the `review` skill.
+- A full review with a PR comment → the `doe-review` skill.
 
 ## Flow
 

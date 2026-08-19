@@ -77,14 +77,14 @@ and that refusal is the point.
 |---|---|---|
 | `riverpod-architect` | **before** `/directive` — designs the state, produces the use-case list that becomes the Test Contract | no |
 | `scaffold-feature` | **inside** `/execute NN` — tests first, then model → repository → state → provider → view | yes, under an APPROVED directive |
-| `fix-style` | **Track B** of `/review-fix` — the non-testable findings | yes, outside the gate |
+| `fix-style` | **Track B** of `/doe-review-fix` — the non-testable findings | yes, outside the gate |
 | `test-plan` | any time — reads the branch diff, writes a manual checklist | no (only `.test/`) |
 | `test-run` | after `test-plan` — drives a running app through the checklist | no |
 
 The pipeline they form:
 
 ```
-riverpod-architect → /directive → [approve] → /execute (scaffold-feature) → /review → /review-fix (fix-style)
+riverpod-architect → /directive → [approve] → /execute (scaffold-feature) → /doe-review → /doe-review-fix (fix-style)
                                                         ↑ tests first, RED before GREEN
 ```
 

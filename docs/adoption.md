@@ -3,6 +3,14 @@
 Installing the kit takes a minute. Making it stick takes one honest decision about your
 architecture. Both are below.
 
+## 0. Prerequisites
+
+- **Claude Code** (or any agent that reads `.claude/skills/` and supports `PreToolUse` hooks).
+- **python3** on `PATH` — the guard and its self-test are Python, and the hook invokes
+  `python3` directly. No packages, standard library only.
+- **git** — the coverage gate diffs against a base ref.
+- Your stack's toolchain (`node`/`npm`, or `flutter`/`dart`).
+
 ## 1. Install
 
 ```bash
@@ -68,6 +76,38 @@ Verify it:
 .doe/execution/directive_guard.py --status      # should say: GUARD: ARMED
 .doe/execution/guard_selftest.py                # should say: no false positives, no false negatives
 ```
+
+### What Claude Code does with this
+
+**Hooks load without a restart.** Claude Code watches the settings files, so the guard is live
+as soon as `install.sh` writes it. Type `/hooks` to see it listed under `PreToolUse` — that
+menu is read-only, so edit `.claude/settings.json` to change anything.
+
+**Skills are project-scoped.** They land in `.claude/skills/<name>/SKILL.md`, so they exist in
+this repo and nowhere else. Two ways they run:
+
+- you type `/directive`, `/execute 05`, `/doe-review` — explicit invocation;
+- Claude loads one on its own when your request matches its `description`. That is why every
+  skill here has a description written as trigger conditions rather than a summary.
+
+The skill bodies cost nothing until they load, so having fourteen of them installed does not
+tax the context window.
+
+**Names are chosen to avoid collisions.** Precedence in Claude Code is enterprise → personal →
+project, and a skill at any level overrides a *bundled* skill of the same name **but never a
+bundled alias**. `/review` is the bundled alias for `/code-review`, so a project skill called
+`review` would be shadowed when typed — silently. Hence `doe-review` and `doe-review-fix`. If
+you rename them in your own copy, check the name against the bundled list first, and prefer a
+prefix.
+
+**A personal skill wins over a project one.** If you keep something in `~/.claude/skills/` with
+a name this kit also uses, yours wins and the DOE one never runs. Rename one of the two.
+
+### First run
+
+Ask the agent to change something under a protected root. Expected: the write is denied, the
+guard's message comes back, and the interview starts. If the agent edits the file instead, the
+hook is not wired — check `/hooks` and the `--status` output above.
 
 ## 4. Make the gate real
 

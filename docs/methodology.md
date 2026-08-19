@@ -95,9 +95,9 @@ enumerating its tests — in the directive, before the code.
 
 ### REVIEW
 
-Reviews go through DOE too. `/review` classifies the findings and materialises **one directive
+Reviews go through DOE too. `/doe-review` classifies the findings and materialises **one directive
 per tier** (`NN_review_<tier>.md`) holding only the **logic-testable** findings; each gets its
-own regression test. `/review-fix` implements it with the BUG flow (red tests → fix → green
+own regression test. `/doe-review-fix` implements it with the BUG flow (red tests → fix → green
 gate → cleanup).
 
 **Non-testable** findings (styling, cosmetic, responsive, i18n) never enter a directive: they
