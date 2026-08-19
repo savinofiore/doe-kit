@@ -32,6 +32,20 @@ jobs:
       - name: Install the kit
         run: ./install.sh --stack ${{ matrix.stack }} /tmp/fixture
 
+      # The headline install is `curl ... | bash`, where BASH_SOURCE is not a file and the
+      # script has to clone itself. Exercised against this checkout so the bootstrap branch
+      # is covered without hitting the network.
+      - name: One-liner path (piped, self-cloning)
+        run: |
+          set -e
+          mkdir -p /tmp/piped && cd /tmp/piped && git init -q . && touch "${{ matrix.marker }}"
+          cat "$GITHUB_WORKSPACE/install.sh" \
+            | DOE_KIT_REPO="$GITHUB_WORKSPACE" DOE_KIT_REF="$(git -C "$GITHUB_WORKSPACE" rev-parse --abbrev-ref HEAD)" \
+              bash -s -- --stack ${{ matrix.stack }}
+          test -f .doe/execution/directive_guard.py
+          test -d .claude/skills/directive
+          .doe/execution/guard_selftest.py
+
       - name: Guard is armed, with the right roots
         working-directory: /tmp/fixture
         run: |
@@ -57,6 +71,16 @@ jobs:
 
           rm .doe/directives/01_x.md
           .doe/execution/directive_guard.py --status | grep -q "GUARD: ARMED"
+
+      # A globally enabled plugin must not make every unrelated repo read-only.
+      - name: Guard is dormant outside a DOE project
+        run: |
+          set -e
+          mkdir -p /tmp/plain && cd /tmp/plain && git init -q .
+          out=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/x.ts"},"cwd":"/tmp/plain"}' \
+            | python3 "$GITHUB_WORKSPACE/core/execution/directive_guard.py")
+          [ -z "$out" ] || { echo "guard spoke up in a non-DOE project: $out"; exit 1; }
+          echo "dormant, as it should be"
 
       - name: Installer is idempotent and never clobbers
         run: |
@@ -124,3 +148,50 @@ jobs:
           if python3 "$V" src.json bad.json; then
             echo "validator passed a broken file"; exit 1
           fi
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Manifests parse and agree
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+          plugin = json.load(open('.claude-plugin/plugin.json'))
+          market = json.load(open('.claude-plugin/marketplace.json'))
+          entry = next(p for p in market['plugins'] if p['name'] == plugin['name'])
+          assert entry['version'] == plugin['version'], \
+              f"version drift: marketplace {entry['version']} vs plugin {plugin['version']}"
+          print(f"{plugin['name']} {plugin['version']} — manifests agree")
+          PY
+
+      # Only plugin.json belongs in .claude-plugin/; skills/, hooks/ and the rest live at
+      # the plugin root. Getting this wrong loads a plugin with nothing in it.
+      - name: Plugin layout
+        run: |
+          set -e
+          test -f hooks/hooks.json
+          test -d skills
+          for d in .claude-plugin/skills .claude-plugin/hooks .claude-plugin/commands; do
+            test ! -e "$d" || { echo "$d must live at the plugin root"; exit 1; }
+          done
+          python3 -c "import json; json.load(open('hooks/hooks.json'))"
+          grep -q 'CLAUDE_PLUGIN_ROOT' hooks/hooks.json
+
+      # Every skill named by a manifest must exist, and every skill must be reachable from
+      # one of them — otherwise the installer and the plugin ship different sets.
+      - name: Skill manifests cover the skills tree
+        run: |
+          set -e
+          listed=$(cat core/skills.txt stacks/*/skills.txt 2>/dev/null | sed 's/#.*//' | tr -d ' ' | grep -v '^$' | sort)
+          present=$(ls -1 skills | sort)
+          for name in $listed; do
+            test -d "skills/$name" || { echo "manifest lists missing skill: $name"; exit 1; }
+          done
+          # `init` is plugin-only: the standalone installer already does what it does.
+          unlisted=$(comm -13 <(echo "$listed") <(echo "$present") | grep -v '^init$' || true)
+          [ -z "$unlisted" ] || { echo "skills not in any manifest: $unlisted"; exit 1; }
+          echo "$(echo "$listed" | wc -l) listed, $(echo "$present" | wc -l) present"

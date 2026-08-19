@@ -13,14 +13,25 @@ architecture. Both are below.
 
 ## 1. Install
 
+Two paths. They install the same method; they differ in where the files live and how updates
+reach you.
+
+### One command (project-local)
+
 ```bash
-git clone https://github.com/<you>/doe-kit.git /tmp/doe-kit
-/tmp/doe-kit/install.sh --stack web-ts /path/to/your/project
+cd /path/to/your/project
+curl -fsSL https://raw.githubusercontent.com/savinofiore/doe-kit/main/install.sh | bash -s -- --stack web-ts
 ```
 
-Stacks available: `web-ts` (TypeScript + Vitest), `flutter` (Dart + flutter test).
+The script detects it is being piped, clones itself to a temp dir, installs, and cleans up. To
+audit it before running — a reasonable habit for anything piped into a shell — drop the pipe:
 
-The installer copies:
+```bash
+curl -fsSL https://raw.githubusercontent.com/savinofiore/doe-kit/main/install.sh -o /tmp/doe.sh
+less /tmp/doe.sh && bash /tmp/doe.sh --stack web-ts
+```
+
+It copies:
 
 ```
 your-project/
@@ -31,10 +42,31 @@ your-project/
 │   └── execution/             # directive_guard.py, guard_selftest.py, run.sh, coverage.sh
 └── .claude/
     ├── settings.json          # the PreToolUse hook (merged, never overwritten blindly)
-    └── skills/                # directive, execute, review, review-fix, …
+    └── skills/                # directive, execute, doe-review, doe-review-fix, …
 ```
 
-Nothing under your source roots is touched.
+Nothing under your source roots is touched, and re-running it never clobbers an existing file
+without `--force`.
+
+### As a Claude Code plugin
+
+```
+/plugin marketplace add savinofiore/doe-kit
+/plugin install doe-kit@doe-kit
+/doe-kit:init web-ts
+```
+
+The plugin carries the skills and the guard hook; `/doe-kit:init` scaffolds the project side
+(`.doe/`). Skills are namespaced — `/doe-kit:directive`, `/doe-kit:execute 05` — which removes
+the whole class of name collisions, including with bundled aliases.
+
+Update with `/plugin marketplace update`. A private marketplace repo works too, as long as the
+people installing it have git access.
+
+**Why the guard is safe to enable globally:** a project with no `.doe/` directory is not a DOE
+project, and the guard is **dormant** there — it blocks nothing. Running `/doe-kit:init` is the
+opt-in; deleting `.doe/` is the opt-out. Without that rule, installing the plugin would make
+every unrelated repository on your machine read-only.
 
 ## 2. Set the protected roots
 

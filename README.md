@@ -28,26 +28,53 @@ correctness, and the only cheap way to tell them apart is a gate it cannot argue
 
 ---
 
-## Quick start
+## Install
+
+**One command**, from inside the project you want to set up:
 
 ```bash
-git clone https://github.com/<you>/doe-kit.git /tmp/doe-kit
-/tmp/doe-kit/install.sh --stack web-ts /path/to/your/project
+curl -fsSL https://raw.githubusercontent.com/savinofiore/doe-kit/main/install.sh | bash -s -- --stack flutter
+```
 
-cd /path/to/your/project
+`--stack web-ts` for TypeScript. It clones itself to a temp dir, writes `.doe/` and
+`.claude/skills/`, merges the hook into `.claude/settings.json` without touching your existing
+settings, and cleans up after itself.
+
+**Or as a Claude Code plugin** — skills namespaced, updates with one command, no files copied
+into the repo until you ask:
+
+```
+/plugin marketplace add savinofiore/doe-kit
+/plugin install doe-kit@doe-kit
+/doe-kit:init flutter
+```
+
+`/doe-kit:init` scaffolds the project side (`.doe/`, templates, gate scripts, config). Update
+later with `/plugin marketplace update`.
+
+| | one-liner | plugin |
+|---|---|---|
+| Skill names | `/directive` | `/doe-kit:directive` — namespaced, can never collide |
+| Updates | re-run the command | `/plugin marketplace update` |
+| Scope | this project | every project where it is enabled |
+| Guard | armed by `.doe/` | armed by `.doe/`, **dormant everywhere else** |
+
+That last row is what makes the plugin safe to enable globally: a project with no `.doe/`
+directory is not a DOE project, and the guard blocks nothing there.
+
+### Verify
+
+```bash
 .doe/execution/directive_guard.py --status   # GUARD: ARMED
 .doe/execution/guard_selftest.py             # no false positives, no false negatives
 .doe/execution/run.sh                        # your gate — must be green before you start
 ```
 
-Then just ask your agent to change something. It will be refused, and it will start the
-interview instead.
+Then ask your agent to change something under your source root. The write is refused and the
+interview starts. That refusal is the system working.
 
-Needs `python3` on `PATH` (standard library only) and `git`. In Claude Code the hook goes live
-immediately — the settings file watcher picks it up, no restart — and you can confirm it with
-`/hooks`. The skills install project-scoped under `.claude/skills/`, invoked as `/directive`,
-`/execute NN`, `/doe-review`, or loaded automatically when your request matches their
-description. Full walkthrough: [docs/adoption.md](docs/adoption.md).
+Needs `python3` (standard library only) and `git`. In Claude Code the hook goes live
+immediately — the settings watcher picks it up, no restart — and `/hooks` shows it.
 
 Stacks: **`web-ts`** (TypeScript · Vitest · tsc · eslint) · **`flutter`** (Dart · flutter test
 · analyze). Adding one is a `run.sh` and a `coverage.sh` — see
@@ -60,17 +87,21 @@ tests-first, review it, fix what no test can see:
 riverpod-architect → /directive → [approve] → /execute (scaffold-feature) → /doe-review → /doe-review-fix (fix-style)
 ```
 
-Those three skills read your token names from `.doe/conventions.json` and **refuse to run
-without it**: a style skill that guesses your design system produces fixes that compile and are
-wrong, which is worse than no fix because it looks done.
+Those three read your token names from `.doe/conventions.json` and **refuse to run without
+it**: a style skill that guesses your design system produces fixes that compile and are wrong,
+which is worse than no fix because it looks done.
 
 ---
 
 ## What is in the box
 
 ```
+skills/              all 17 skills, one copy — the plugin loads them all, the installer
+                     picks per stack from the skills.txt manifests
+hooks/hooks.json     the PreToolUse guard, for the plugin path
+.claude-plugin/      plugin.json + marketplace.json
+
 core/
-├── skills/          directive · execute · review · review-fix · diagnose · delta-check · port-commits
 ├── templates/       00_FEATURE · 00_BUG · 00_REVIEW directive templates
 └── execution/       directive_guard.py · guard_selftest.py     (stack-agnostic)
 
