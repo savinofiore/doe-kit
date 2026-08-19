@@ -1,0 +1,81 @@
+name: kit self-test
+
+on: [push, pull_request]
+
+jobs:
+  install-and-guard:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - stack: web-ts
+            roots: "src/, tests/"
+            marker: package.json
+          - stack: flutter
+            roots: "lib/, test/"
+            marker: pubspec.yaml
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          bash -n install.sh
+          for f in stacks/*/execution/*.sh; do bash -n "$f"; done
+
+      - name: Build a fixture project
+        run: |
+          mkdir -p /tmp/fixture
+          cd /tmp/fixture
+          git init -q .
+          touch "${{ matrix.marker }}"
+
+      - name: Install the kit
+        run: ./install.sh --stack ${{ matrix.stack }} /tmp/fixture
+
+      - name: Guard is armed, with the right roots
+        working-directory: /tmp/fixture
+        run: |
+          .doe/execution/directive_guard.py --status | tee status.txt
+          grep -q "protected:.*${{ matrix.roots }}" status.txt
+          grep -q "GUARD: ARMED" status.txt
+
+      # The guard is the only component that, when it breaks, turns nothing red — it just
+      # stops protecting. This is the step that notices.
+      - name: Guard self-test
+        working-directory: /tmp/fixture
+        run: .doe/execution/guard_selftest.py
+
+      - name: Lifecycle — DRAFT blocks, APPROVED unlocks, deletion re-arms
+        working-directory: /tmp/fixture
+        run: |
+          set -e
+          printf '# d\n\nSTATE: DRAFT\n' > .doe/directives/01_x.md
+          .doe/execution/directive_guard.py --status | grep -q "GUARD: ARMED"
+
+          printf '# d\n\nSTATE: APPROVED\n' > .doe/directives/01_x.md
+          .doe/execution/directive_guard.py --status | grep -q "GUARD: UNLOCKED"
+
+          rm .doe/directives/01_x.md
+          .doe/execution/directive_guard.py --status | grep -q "GUARD: ARMED"
+
+      - name: Installer is idempotent and never clobbers
+        run: |
+          ./install.sh --stack ${{ matrix.stack }} /tmp/fixture | tee second.txt
+          grep -q "hook already wired" second.txt
+          grep -q "skip" second.txt
+
+  i18n-validator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validator catches drift, lost placeholders, overflow
+        run: |
+          cd /tmp
+          V=$GITHUB_WORKSPACE/stacks/shared/skills/i18n-translator/scripts/validate.py
+          printf '{"a":"Accedi","b":"Ciao {name}","c":" e poi"}\n'   > src.json
+          printf '{"a":"Log in","b":"Hi {name}","c":" and then"}\n'  > ok.json
+          printf '{"a":"Authenticate now","b":"Hi {nome}"}\n'        > bad.json
+          python3 "$V" src.json ok.json
+          if python3 "$V" src.json bad.json; then
+            echo "validator passed a broken file"; exit 1
+          fi
