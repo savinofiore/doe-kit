@@ -5,9 +5,8 @@ description: Set up DOE in the current project — creates .doe/ with the direct
 
 # Init — opt this project into DOE
 
-Creates the project side of DOE. The plugin already provides the skills and the guard hook;
-this scaffolds what has to live in the repository, because it is project-specific and belongs
-in version control.
+Creates the project side of DOE. The plugin provides the skills; this scaffolds what has to
+live in the repository, because it is project-specific and belongs in version control.
 
 Invocation: `/doe-kit:init <stack>` — e.g. `/doe-kit:init flutter`. With no argument, ask.
 
@@ -17,7 +16,16 @@ The guard is **dormant in any project without a `.doe/` directory**. That is del
 plugin is enabled globally, and a guard that armed itself everywhere would make every unrelated
 repository read-only the moment someone installed it.
 
-So `.doe/` is the opt-in. Creating it arms the guard for this project and nothing else.
+So `.doe/` is the opt-in. Creating it arms a configured guard for this project and nothing else.
+
+On Codex, use the project-local installer first because Codex plugins package skills but not
+plugin-scoped hooks:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/savinofiore/doe-kit/main/install.sh | bash -s -- --stack <stack>
+```
+
+It creates `.doe/`, installs `.codex/skills/`, and merges the guard into `.codex/hooks.json`.
 
 ## Step 1 — Determine the stack
 
@@ -34,7 +42,7 @@ leaves the code unguarded or blocks the wrong directory.
 
 ## Step 2 — Copy the kit's project files
 
-Everything comes from the plugin directory, `${CLAUDE_PLUGIN_ROOT}`:
+For Claude Code, everything comes from the plugin directory, `${CLAUDE_PLUGIN_ROOT}`:
 
 ```bash
 mkdir -p .doe/directives .doe/execution
@@ -101,7 +109,7 @@ working directory.
 
 ## Step 6 — Tell the project about the process
 
-Append to `CLAUDE.md` (create it if absent):
+Append to `AGENTS.md` for Codex or `CLAUDE.md` for Claude Code (create it if absent):
 
 ```markdown
 ## Process — DOE (mandatory)

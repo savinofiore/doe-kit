@@ -44,6 +44,8 @@ jobs:
               bash -s -- --stack ${{ matrix.stack }}
           test -f .doe/execution/directive_guard.py
           test -d .claude/skills/directive
+          test -d .codex/skills/directive
+          test -f .codex/hooks.json
           .doe/execution/guard_selftest.py
 
       - name: Guard is armed, with the right roots
@@ -103,6 +105,25 @@ jobs:
           done
           echo "$count skills, all with frontmatter"
           [ "$count" -ge 9 ]
+
+      - name: Codex skills have valid frontmatter
+        working-directory: /tmp/fixture
+        run: |
+          set -e
+          for f in .codex/skills/*/SKILL.md; do
+            head -1 "$f" | grep -q '^---$' || { echo "no frontmatter: $f"; exit 1; }
+            sed -n '2p' "$f" | grep -q '^name:' || { echo "no name: $f"; exit 1; }
+          done
+
+      - name: Codex hook targets Codex write tools
+        working-directory: /tmp/fixture
+        run: |
+          python3 - <<'PY'
+          import json
+          hooks = json.load(open('.codex/hooks.json'))['hooks']['PreToolUse']
+          entry = next(h for h in hooks if 'directive_guard.py' in str(h))
+          assert entry['matcher'] == 'apply_patch|exec_command'
+          PY
 
       # /review is the bundled alias for /code-review, and a project skill never overrides
       # a bundled alias — it would be shadowed silently when typed. Same trap for any other
@@ -166,6 +187,19 @@ jobs:
           assert entry['version'] == plugin['version'], \
               f"version drift: marketplace {entry['version']} vs plugin {plugin['version']}"
           print(f"{plugin['name']} {plugin['version']} — manifests agree")
+          PY
+
+      - name: Codex manifest and marketplace agree
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json
+          plugin = json.load(open('.codex-plugin/plugin.json'))
+          market = json.load(open('.agents/plugins/marketplace.json'))
+          entry = next(p for p in market['plugins'] if p['name'] == plugin['name'])
+          assert entry['source'] == {'source': 'local', 'path': './'}
+          assert plugin['skills'] == './skills/'
+          print(f"{plugin['name']} Codex manifests agree")
           PY
 
       # Only plugin.json belongs in .claude-plugin/; skills/, hooks/ and the rest live at

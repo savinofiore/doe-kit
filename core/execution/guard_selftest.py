@@ -127,6 +127,12 @@ TOOL_CASES: list[tuple[str, str, str]] = [
     ("Grep", "src/", ALLOW),
 ]
 
+PATCH_CASES: list[tuple[str, str]] = [
+    ("*** Begin Patch\n*** Update File: src/core/models/post.ts\n*** End Patch", DENY),
+    ("*** Begin Patch\n*** Add File: tests/core/models/post.test.ts\n*** End Patch", DENY),
+    ("*** Begin Patch\n*** Update File: docs/architecture.md\n*** End Patch", ALLOW),
+]
+
 # Root rewriting, so one case list covers every stack. Order matters: the longer name first,
 # otherwise `src` inside `tests` would be rewritten twice.
 CANONICAL_ROOTS = ("tests", "src")
@@ -187,6 +193,7 @@ def main() -> int:
 
     bash_cases = [(adapt(cmd, roots), expected) for cmd, expected in BASH_CASES]
     tool_cases = [(tool, adapt(path, roots), expected) for tool, path, expected in TOOL_CASES]
+    patch_cases = [(adapt(patch, roots), expected) for patch, expected in PATCH_CASES]
 
     false_pos: list[tuple[str, str]] = []
     false_neg: list[tuple[str, str]] = []
@@ -218,7 +225,20 @@ def main() -> int:
         else:
             false_neg.append((f"{tool} → {path}", "path not treated as protected"))
 
-    total = len(bash_cases) + sum(1 for t, _, _ in tool_cases if t in guard.GUARDED_TOOLS)
+    for patch, expected in patch_cases:
+        protected = any(guard.is_protected(ROOT, path, roots) for path in guard.patch_paths(patch))
+        if protected == (expected == DENY):
+            passed += 1
+        elif expected == ALLOW:
+            false_pos.append((f"apply_patch → {patch}", "path treated as protected"))
+        else:
+            false_neg.append((f"apply_patch → {patch}", "path not treated as protected"))
+
+    total = (
+        len(bash_cases)
+        + sum(1 for t, _, _ in tool_cases if t in guard.GUARDED_TOOLS)
+        + len(patch_cases)
+    )
 
     # ── Level 2: the end-to-end wiring, only while the guard is armed ───────────
     #
@@ -244,12 +264,31 @@ def main() -> int:
                 false_neg.append((label, got))
         total += len(tool_cases)
 
+        for patch, expected in patch_cases:
+            got = verdict({"tool_name": "apply_patch", "tool_input": {"patch": patch}})
+            label = f"e2e apply_patch → {patch}"
+            if got == expected:
+                passed += 1
+            elif expected == ALLOW:
+                false_pos.append((label, got))
+            else:
+                false_neg.append((label, got))
+        total += len(patch_cases)
+
         e2e_bash = adapt("npx supabase gen types typescript > src/types/database.ts", roots)
         got = verdict({"tool_name": "Bash", "tool_input": {"command": e2e_bash}})
         if got == DENY:
             passed += 1
         else:
             false_neg.append((f"e2e Bash → {e2e_bash}", got))
+        total += 1
+
+        e2e_codex = adapt("printf x > src/codex-marker.ts", roots)
+        got = verdict({"tool_name": "exec_command", "tool_input": {"cmd": e2e_codex}})
+        if got == DENY:
+            passed += 1
+        else:
+            false_neg.append((f"e2e exec_command → {e2e_codex}", got))
         total += 1
 
     print(f"directive-guard self-test: {passed}/{total}  (roots: {', '.join(roots)})\n")
