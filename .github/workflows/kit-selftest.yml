@@ -39,8 +39,11 @@ jobs:
         run: |
           set -e
           mkdir -p /tmp/piped && cd /tmp/piped && git init -q . && touch "${{ matrix.marker }}"
+          # On pull_request the workspace is a detached HEAD, so there is no branch name to
+          # clone by. Name the commit under test ourselves.
+          git -C "$GITHUB_WORKSPACE" branch -f ci-selftest HEAD
           cat "$GITHUB_WORKSPACE/install.sh" \
-            | DOE_KIT_REPO="$GITHUB_WORKSPACE" DOE_KIT_REF="$(git -C "$GITHUB_WORKSPACE" rev-parse --abbrev-ref HEAD)" \
+            | DOE_KIT_REPO="$GITHUB_WORKSPACE" DOE_KIT_REF=ci-selftest \
               bash -s -- --stack ${{ matrix.stack }}
           test -f .doe/execution/directive_guard.py
           test -d .claude/skills/directive

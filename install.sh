@@ -36,8 +36,12 @@ if [[ -z "$KIT" || ! -f "$KIT/core/execution/directive_guard.py" ]]; then
   command -v git >/dev/null 2>&1 || { echo "doe-kit: git is required" >&2; exit 69; }
   KIT="$(mktemp -d)/doe-kit"
   echo "fetching doe-kit ($REPO_REF)..."
-  git clone --quiet --depth 1 --branch "$REPO_REF" "$REPO_URL" "$KIT" \
-    || { echo "doe-kit: could not clone $REPO_URL" >&2; exit 69; }
+  # --branch only accepts a branch or tag; fall back to a full clone + checkout so a
+  # commit SHA in DOE_KIT_REF also works.
+  git clone --quiet --depth 1 --branch "$REPO_REF" "$REPO_URL" "$KIT" 2>/dev/null \
+    || { rm -rf "$KIT"; git clone --quiet "$REPO_URL" "$KIT" \
+         && git -C "$KIT" checkout --quiet "$REPO_REF"; } \
+    || { echo "doe-kit: could not clone $REPO_URL at $REPO_REF" >&2; exit 69; }
   trap 'rm -rf "$(dirname "$KIT")"' EXIT
 fi
 
