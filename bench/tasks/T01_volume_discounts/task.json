@@ -1,0 +1,25 @@
+{
+  "id": "T01_volume_discounts",
+  "tier": 2,
+  "stack": "python-stdlib",
+  "provenance": "authored for this benchmark — not derived from any public repository",
+  "protected_roots": [
+    "src/",
+    "tests/"
+  ],
+  "prompt": "prompt.md",
+  "commands": {
+    "agent_tests": "python3 -m unittest discover -s tests -t .",
+    "verify": "./verify.sh"
+  },
+  "regression": {
+    "fixture_dir": "tests",
+    "cmd": "python3 -m unittest discover -s _bench_regression -t ."
+  },
+  "mutation": {
+    "src": "src",
+    "test_cmd": "python3 -m unittest discover -s tests -t .",
+    "max_mutants": 60
+  },
+  "notes": "Discriminates on three things a one-shot run usually gets wrong: inclusive tier boundaries, half-away-from-zero rounding (Python's round() is banker's rounding), and per-line rather than per-order tiering."
+}

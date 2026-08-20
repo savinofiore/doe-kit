@@ -1,0 +1,8 @@
+{
+  "id": "A3_baseline_matched",
+  "description": "A1's loop, capped at A2's actual spend on the same task and seed. The control that can falsify H2 — run it after A2_doe.",
+  "prompt_suffix": "arms/prompts/baseline_matched.md",
+  "match_budget_from": "A2_doe",
+  "approvals": 0,
+  "timeout": 5400
+}

@@ -232,3 +232,42 @@ jobs:
           unlisted=$(comm -13 <(echo "$listed") <(echo "$present") | grep -v '^init$' || true)
           [ -z "$unlisted" ] || { echo "skills not in any manifest: $unlisted"; exit 1; }
           echo "$(echo "$listed" | wc -l) listed, $(echo "$present" | wc -l) present"
+
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          bash -n bench/selftest.sh
+          for f in bench/tasks/*/verify.sh; do bash -n "$f"; done
+
+      # The task itself has to discriminate, or every arm scores the same and the benchmark
+      # measures nothing. Fixture green, reference solution accepted, wrong answer rejected.
+      - name: Reference task discriminates
+        run: |
+          set -e
+          T=bench/tasks/T01_volume_discounts
+          cp -r "$T/fixture" /tmp/ref && cp -r "$T/fixture" /tmp/wrong
+          (cd /tmp/ref && python3 -m unittest discover -s tests -t .)
+          cp bench/selftest/solutions/reference.py /tmp/ref/src/pricing.py
+          cp bench/selftest/solutions/broken.py    /tmp/wrong/src/pricing.py
+          "$T/verify.sh" /tmp/ref > /dev/null
+          if "$T/verify.sh" /tmp/wrong > /dev/null 2>&1; then
+            echo "the hidden suite accepted a wrong implementation"; exit 1
+          fi
+          echo "hidden suite accepts the reference and rejects the wrong answer"
+
+      # The scorer shares the guard's failure mode: when it breaks it turns nothing red, it
+      # just stops discriminating. This is the step that notices.
+      - name: Scorer self-test
+        run: ./bench/selftest.sh
+
+      - name: Arms and tasks parse, and the runner wires them up
+        run: |
+          set -e
+          for f in bench/arms/*.json bench/tasks/*/task.json; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+          done
+          ./bench/run.py --dry-run --arms A0_baseline,A1_baseline_rich,A2_doe,A3_baseline_matched --seeds 1

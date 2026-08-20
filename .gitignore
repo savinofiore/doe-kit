@@ -4,3 +4,8 @@ __pycache__/
 node_modules/
 coverage/
 .test/reports/
+
+# Benchmark working copies. Committed results go in bench/results/<run-id>/ by hand,
+# after review — an accidental `git add -A` must never publish a half-finished run.
+bench/results/*/
+!bench/results/.gitkeep

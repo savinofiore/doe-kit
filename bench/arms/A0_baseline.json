@@ -1,0 +1,7 @@
+{
+  "id": "A0_baseline",
+  "description": "One prompt, no process. The floor, and the industry default.",
+  "prompt_suffix": "arms/prompts/baseline.md",
+  "approvals": 0,
+  "timeout": 1800
+}
