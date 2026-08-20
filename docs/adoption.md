@@ -5,7 +5,7 @@ architecture. Both are below.
 
 ## 0. Prerequisites
 
-- **Claude Code** (or any agent that reads `.claude/skills/` and supports `PreToolUse` hooks).
+- **Claude Code or Codex** (or any agent that reads project skills and supports `PreToolUse` hooks).
 - **python3** on `PATH` — the guard and its self-test are Python, and the hook invokes
   `python3` directly. No packages, standard library only.
 - **git** — the coverage gate diffs against a base ref.
@@ -40,9 +40,12 @@ your-project/
 │   ├── doe.config.json        # protected roots
 │   ├── directives/            # 00_*_TEMPLATE.md  (+ your NN_*.md over time)
 │   └── execution/             # directive_guard.py, guard_selftest.py, run.sh, coverage.sh
-└── .claude/
-    ├── settings.json          # the PreToolUse hook (merged, never overwritten blindly)
-    └── skills/                # directive, execute, doe-review, doe-review-fix, …
+├── .claude/
+│   ├── settings.json          # the Claude Code PreToolUse hook (merged)
+│   └── skills/                # directive, execute, doe-review, doe-review-fix, …
+└── .codex/
+    ├── hooks.json             # the Codex PreToolUse hook (merged)
+    └── skills/                # the same DOE skills for Codex
 ```
 
 Nothing under your source roots is touched, and re-running it never clobbers an existing file
@@ -67,6 +70,17 @@ people installing it have git access.
 project, and the guard is **dormant** there — it blocks nothing. Running `/doe-kit:init` is the
 opt-in; deleting `.doe/` is the opt-out. Without that rule, installing the plugin would make
 every unrelated repository on your machine read-only.
+
+### As a Codex plugin
+
+```bash
+codex plugin marketplace add https://github.com/savinofiore/doe-kit.git
+codex plugin add doe-kit@doe-kit
+```
+
+Start a new task after installation. The Codex plugin provides the DOE skills; Codex does not
+load plugin-scoped hooks, so use `install.sh` once per project to wire the same guard into
+`.codex/hooks.json`. The guard is still dormant until `.doe/` exists.
 
 ## 2. Set the protected roots
 
@@ -102,6 +116,26 @@ The installer merges this into `.claude/settings.json`:
 }
 ```
 
+For Codex it also merges this into `.codex/hooks.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch|exec_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \".doe/execution/directive_guard.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 Verify it:
 
 ```bash
@@ -109,11 +143,15 @@ Verify it:
 .doe/execution/guard_selftest.py                # should say: no false positives, no false negatives
 ```
 
-### What Claude Code does with this
+### What Claude Code and Codex do with this
 
 **Hooks load without a restart.** Claude Code watches the settings files, so the guard is live
 as soon as `install.sh` writes it. Type `/hooks` to see it listed under `PreToolUse` — that
 menu is read-only, so edit `.claude/settings.json` to change anything.
+
+Codex reads project hooks from `.codex/hooks.json`. Start a new task after changing its hook or
+skill configuration. Its guard matches `apply_patch` and `exec_command`, including protected
+paths inside an `apply_patch` payload and shell commands supplied as `cmd`.
 
 **Skills are project-scoped.** They land in `.claude/skills/<name>/SKILL.md`, so they exist in
 this repo and nowhere else. Two ways they run:
@@ -172,10 +210,10 @@ You do not have to migrate everything on day one. New work goes in the core laye
 moves when you touch it. The coverage gate only measures *changed* files, so this works
 incrementally by construction.
 
-## 6. Add it to CLAUDE.md
+## 6. Add it to AGENTS.md or CLAUDE.md
 
 The guard blocks the write, but the agent works better when it knows why. Add this to your
-project's `CLAUDE.md`:
+project's `AGENTS.md` (or `CLAUDE.md`):
 
 ```markdown
 ## Process — DOE (mandatory)

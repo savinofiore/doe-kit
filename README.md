@@ -78,8 +78,8 @@ correctness, and the only cheap way to tell them apart is a gate it cannot argue
 curl -fsSL https://raw.githubusercontent.com/savinofiore/doe-kit/main/install.sh | bash -s -- --stack flutter
 ```
 
-`--stack web-ts` for TypeScript. It clones itself to a temp dir, writes `.doe/` and
-`.claude/skills/`, merges the hook into `.claude/settings.json` without touching your existing
+`--stack web-ts` for TypeScript. It clones itself to a temp dir, writes `.doe/`, Claude and
+Codex skill directories, merges each agent's hook configuration without touching existing
 settings, and cleans up after itself.
 
 **Or as a Claude Code plugin** — skills namespaced, updates with one command, no files copied
@@ -103,6 +103,17 @@ later with `/plugin marketplace update`.
 
 That last row is what makes the plugin safe to enable globally: a project with no `.doe/`
 directory is not a DOE project, and the guard blocks nothing there.
+
+**Or as a Codex plugin** — the same skills are available through Codex's marketplace:
+
+```bash
+codex plugin marketplace add https://github.com/savinofiore/doe-kit.git
+codex plugin add doe-kit@doe-kit
+```
+
+Then start a new Codex task and ask it to “set up DOE for this project” (or run the installed
+`init` skill). Codex plugin manifests currently package skills, while the write guard is a
+project hook; `install.sh` wires it into `.codex/hooks.json` along with `.codex/skills/`.
 
 ### Verify
 
@@ -174,10 +185,12 @@ which is worse than no fix because it looks done.
 <summary><b>Repository layout</b></summary>
 
 ```
-skills/              all 17 skills, one copy — the plugin loads them all, the installer
+skills/              all 17 skills, one copy — both plugins load them all, the installer
                      picks per stack from the skills.txt manifests
 hooks/hooks.json     the PreToolUse guard, for the plugin path
 .claude-plugin/      plugin.json + marketplace.json
+.codex-plugin/       Codex plugin manifest
+.agents/plugins/     Codex marketplace manifest
 
 core/
 ├── templates/       00_FEATURE · 00_BUG · 00_REVIEW directive templates

@@ -53,7 +53,8 @@ from pathlib import Path
 # Tools that write to disk. Read/Grep/Glob are not intercepted: the guard protects writing,
 # not reading. A guard that blocks `grep` gets disabled within the hour, and a disabled
 # guard protects nothing.
-GUARDED_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
+GUARDED_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit", "apply_patch"}
+SHELL_TOOLS = {"Bash", "exec_command"}
 
 DIRECTIVES_DIR = Path(".doe/directives")
 CONFIG_FILE = Path(".doe/doe.config.json")
@@ -146,13 +147,13 @@ GIT_WRITE_SUBCMDS = {"apply", "am"}
 
 def repo_root(cwd: Path | None = None) -> Path:
     """
-    Repo root: `CLAUDE_PROJECT_DIR`, else the hook payload's cwd, else the script location.
+    Repo root: agent project env var, else the hook payload's cwd, else the script location.
 
     The cwd fallback matters when the guard runs from a plugin install: the script then
     lives in the plugin directory, nowhere near the project, so its own location is the
     wrong answer.
     """
-    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    env = os.environ.get("CLAUDE_PROJECT_DIR") or os.environ.get("CODEX_PROJECT_DIR")
     if env:
         return Path(env).resolve()
     if cwd is not None:
@@ -178,7 +179,7 @@ def cli_root() -> Path:
     `.doe/`. Falls back to `repo_root()` so a standalone install still answers from its own
     location.
     """
-    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    env = os.environ.get("CLAUDE_PROJECT_DIR") or os.environ.get("CODEX_PROJECT_DIR")
     if env:
         return Path(env).resolve()
     here = Path.cwd().resolve()
@@ -474,6 +475,18 @@ def state_report(root: Path) -> str:
     return "\n".join(lines)
 
 
+def patch_paths(tool_input: object) -> list[str]:
+    """Returns paths touched by an apply_patch payload from Claude or Codex."""
+    if isinstance(tool_input, str):
+        patch = tool_input
+    elif isinstance(tool_input, dict):
+        patch = str(tool_input.get("patch") or tool_input.get("input") or "")
+    else:
+        return []
+
+    return re.findall(r"^\*\*\* (?:Add|Update|Delete) File: (.+)$", patch, re.MULTILINE)
+
+
 def handle_hook() -> None:
     raw = sys.stdin.read()
     if not raw.strip():
@@ -499,8 +512,8 @@ def handle_hook() -> None:
     roots = protected_roots(root)
     roots_label = " and ".join(f"{r}/" for r in roots)
 
-    if tool_name == "Bash":
-        command = tool_input.get("command") or ""
+    if tool_name in SHELL_TOOLS:
+        command = tool_input.get("command") or tool_input.get("cmd") or ""
         if not command.strip():
             allow()
 
@@ -523,6 +536,23 @@ def handle_hook() -> None:
 
     if tool_name not in GUARDED_TOOLS:
         allow()
+
+    if tool_name == "apply_patch":
+        protected = [
+            rel
+            for path in patch_paths(tool_input)
+            if (rel := is_protected(root, path, roots, cwd)) is not None
+        ]
+        if not protected or approved_directives(root):
+            allow()
+        deny(
+            BLOCK_MESSAGE.format(
+                rel=", ".join(protected),
+                roots=roots_label,
+                next_steps=NEXT_STEPS,
+                state_report=state_report(root),
+            )
+        )
 
     file_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
 
@@ -552,7 +582,7 @@ def handle_status() -> None:
     print(f"repo root:   {root}")
     print(f"bypass:      {'ACTIVE (DOE_BYPASS=1)' if os.environ.get('DOE_BYPASS') == '1' else 'no'}")
     print(f"protected:   {', '.join(r + '/' for r in roots)}")
-    print(f"intercepts:  {', '.join(sorted(GUARDED_TOOLS))}, Bash (writes)")
+    print(f"intercepts:  {', '.join(sorted(GUARDED_TOOLS))}, {', '.join(sorted(SHELL_TOOLS))} (writes)")
     print()
 
     if not directives:

@@ -1,0 +1,31 @@
+{
+  "name": "doe-kit",
+  "version": "0.2.0",
+  "description": "Directive-first, test-driven workflow for coding agents.",
+  "author": {
+    "name": "Savino Fiore",
+    "url": "https://github.com/savinofiore"
+  },
+  "homepage": "https://github.com/savinofiore/doe-kit",
+  "repository": "https://github.com/savinofiore/doe-kit",
+  "license": "MIT",
+  "keywords": ["tdd", "test-driven", "code-review", "workflow", "codex", "flutter", "typescript"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "DOE Kit",
+    "shortDescription": "Directive-first, test-driven development for coding agents.",
+    "longDescription": "Write an approved directive before implementation, then use DOE's deterministic red-to-green gate to verify the work.",
+    "developerName": "Savino Fiore",
+    "category": "Developer Tools",
+    "capabilities": ["Write"],
+    "websiteURL": "https://github.com/savinofiore/doe-kit",
+    "privacyPolicyURL": "https://github.com/savinofiore/doe-kit/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/savinofiore/doe-kit/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Set up DOE for this Flutter project",
+      "Create a DOE directive for this change",
+      "Run the DOE gate for this directive"
+    ],
+    "brandColor": "#0F766E"
+  }
+}

@@ -15,8 +15,10 @@
 #   .doe/doe.config.json      protected roots
 #   .doe/directives/          the three templates
 #   .doe/execution/           guard + self-test (core) and gate scripts (stack)
-#   .claude/skills/           the DOE skills (core + stack)
-#   .claude/settings.json     the PreToolUse hook, MERGED into any existing file
+#   .claude/skills/           the DOE skills for Claude Code (core + stack)
+#   .claude/settings.json     the Claude PreToolUse hook, merged into existing settings
+#   .codex/skills/            the DOE skills for Codex (core + stack)
+#   .codex/hooks.json         the Codex PreToolUse hook, merged into existing hooks
 #
 # Nothing under your source roots is touched. Existing files are never overwritten unless
 # --force is given; settings.json is always merged, never replaced.
@@ -34,8 +36,12 @@ if [[ -z "$KIT" || ! -f "$KIT/core/execution/directive_guard.py" ]]; then
   command -v git >/dev/null 2>&1 || { echo "doe-kit: git is required" >&2; exit 69; }
   KIT="$(mktemp -d)/doe-kit"
   echo "fetching doe-kit ($REPO_REF)..."
-  git clone --quiet --depth 1 --branch "$REPO_REF" "$REPO_URL" "$KIT" \
-    || { echo "doe-kit: could not clone $REPO_URL" >&2; exit 69; }
+  # --branch only accepts a branch or tag; fall back to a full clone + checkout so a
+  # commit SHA in DOE_KIT_REF also works.
+  git clone --quiet --depth 1 --branch "$REPO_REF" "$REPO_URL" "$KIT" 2>/dev/null \
+    || { rm -rf "$KIT"; git clone --quiet "$REPO_URL" "$KIT" \
+         && git -C "$KIT" checkout --quiet "$REPO_REF"; } \
+    || { echo "doe-kit: could not clone $REPO_URL at $REPO_REF" >&2; exit 69; }
   trap 'rm -rf "$(dirname "$KIT")"' EXIT
 fi
 
@@ -185,6 +191,25 @@ install_skills_from "$KIT/core/skills.txt"
 install_skills_from "$KIT/stacks/shared/skills.txt"
 install_skills_from "$STACK_DIR/skills.txt"
 
+# ── .codex/skills ───────────────────────────────────────────────────────────────
+
+echo
+echo "${BOLD}.codex/skills/${OFF}"
+
+install_codex_skills_from() {
+  local manifest="$1" name
+  [[ -f "$manifest" ]] || return 0
+  while IFS= read -r name; do
+    name="${name%%#*}"; name="${name// /}"
+    [[ -z "$name" ]] && continue
+    copy "$KIT/skills/$name" "$TARGET/.codex/skills/$name"
+  done < "$manifest"
+}
+
+install_codex_skills_from "$KIT/core/skills.txt"
+install_codex_skills_from "$KIT/stacks/shared/skills.txt"
+install_codex_skills_from "$STACK_DIR/skills.txt"
+
 # ── .claude/settings.json (merge) ───────────────────────────────────────────────
 
 echo
@@ -239,6 +264,58 @@ print("  hook wired into .claude/settings.json")
 PY
 fi
 
+# ── .codex/hooks.json (merge) ───────────────────────────────────────────────────
+
+echo
+echo "${BOLD}.codex/hooks.json${OFF}"
+
+if [[ $DRY -eq 1 ]]; then
+  echo "  would merge the PreToolUse hook into .codex/hooks.json"
+else
+  mkdir -p "$TARGET/.codex"
+  python3 - "$TARGET" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+target = Path(sys.argv[1])
+hooks_path = target / ".codex/hooks.json"
+
+hook = {
+    "matcher": "apply_patch|exec_command",
+    "hooks": [
+        {
+            "type": "command",
+            "command": 'python3 ".doe/execution/directive_guard.py"',
+            "timeout": 5,
+        }
+    ],
+}
+
+settings = {}
+if hooks_path.is_file():
+    try:
+        settings = json.loads(hooks_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print("  hooks.json is not valid JSON — not touching it.")
+        print("  Add the hook by hand (see docs/adoption.md).")
+        raise SystemExit(0)
+
+hooks = settings.setdefault("hooks", {})
+pre = hooks.setdefault("PreToolUse", [])
+already = any(
+    "directive_guard.py" in json.dumps(entry) for entry in pre if isinstance(entry, dict)
+)
+if already:
+    print("  hook already wired — left as is.")
+    raise SystemExit(0)
+
+pre.append(hook)
+hooks_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+print("  hook wired into .codex/hooks.json")
+PY
+fi
+
 # ── next steps ──────────────────────────────────────────────────────────────────
 
 cat <<EOF
@@ -250,7 +327,7 @@ ${BOLD}Next steps${OFF}
   2. Verify the guard:
        .doe/execution/directive_guard.py --status     → GUARD: ARMED
        .doe/execution/guard_selftest.py               → no false positives/negatives
-  3. Add the process section to your CLAUDE.md — see docs/adoption.md § 6.
+  3. Add the process section to your AGENTS.md or CLAUDE.md — see docs/adoption.md § 6.
   4. Turn on CI — see docs/enforcement.md.
 
   Emergency escape, outside the process:  export DOE_BYPASS=1
