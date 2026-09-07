@@ -76,7 +76,7 @@ else
   echo "${YELLOW}── lint (skipped: --quick) ──${OFF}"
 fi
 
-step "test" npx vitest run "${VITEST_ARGS[@]}"
+step "test" npx vitest run ${VITEST_ARGS[@]+"${VITEST_ARGS[@]}"}
 
 echo
 if [[ ${#FAILED[@]} -eq 0 ]]; then
