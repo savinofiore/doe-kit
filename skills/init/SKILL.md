@@ -29,13 +29,22 @@ It creates `.doe/`, installs `.codex/skills/`, and merges the guard into `.codex
 
 ## Step 1 — Determine the stack
 
-Ask, or infer and confirm:
+The stacks are not a list held in this skill. Each one describes itself in
+`stacks/<name>/stack.json`, and that descriptor is the only place a stack is defined — so
+this list is always the real one, however many have been added since:
 
-| Marker in the repo | Stack |
-|---|---|
-| `pubspec.yaml` | `flutter` |
-| `package.json` + `tsconfig.json` | `web-ts` |
-| anything else | ask — and see "Unsupported stack" below |
+```bash
+python3 - "$CLAUDE_PLUGIN_ROOT"/stacks/*/stack.json <<'EOF'
+import json, sys
+for path in sys.argv[1:]:
+    d = json.load(open(path))
+    print(f"{d['name']:<10} {d['label']:<38} "
+          f"markers: {', '.join(d['markers']):<26} roots: {', '.join(d['protected_roots'])}")
+EOF
+```
+
+Match the repository against the `markers` of each descriptor, then **ask the user to
+confirm**. If nothing matches, see "Unsupported stack" below.
 
 Never guess silently. The stack decides the protected roots, and getting those wrong either
 leaves the code unguarded or blocks the wrong directory.
@@ -67,25 +76,33 @@ cp "$CLAUDE_PLUGIN_ROOT"/docs/methodology.md .doe/README.md
 
 ## Step 3 — Write the config
 
-`.doe/doe.config.json` — the protected roots:
-
-```json
-{ "protected_roots": ["lib", "test"] }
-```
-
-`src`/`tests` for web-ts, `lib`/`test` for flutter. These must be the directories holding
-production code and tests. Never include `.doe/` itself: the directive has to stay writable
-while the guard is armed.
-
-For the flutter stack, also copy the conventions template:
+`.doe/doe.config.json` — the protected roots. Copy them out of the descriptor rather than
+typing them, so this file and the stack can never disagree:
 
 ```bash
-cp "$CLAUDE_PLUGIN_ROOT"/stacks/flutter/conventions.example.json .doe/conventions.example.json
+python3 - "$CLAUDE_PLUGIN_ROOT/stacks/<stack>/stack.json" <<'EOF'
+import json, sys
+roots = json.load(open(sys.argv[1]))["protected_roots"]
+with open(".doe/doe.config.json", "w") as f:
+    json.dump({"protected_roots": roots}, f, indent=2)
+    f.write("\n")
+print("protected_roots:", roots)
+EOF
 ```
 
-Do **not** create `.doe/conventions.json` yourself. `scaffold-feature`, `fix-style` and
-`riverpod-architect` refuse to run without it, and a config full of another project's token
-names produces fixes that compile and are wrong. Tell the user to copy and fill it.
+These must be the directories holding production code and tests. Never include `.doe/`
+itself: the directive has to stay writable while the guard is armed.
+
+When the descriptor says `"conventions": true`, the stack also ships a conventions template
+that its skills read instead of hardcoding a design system — copy it:
+
+```bash
+cp "$CLAUDE_PLUGIN_ROOT"/stacks/<stack>/conventions.example.json .doe/conventions.example.json
+```
+
+Do **not** create `.doe/conventions.json` yourself. The skills that need it refuse to run
+without it, and a config full of another project's token names produces fixes that compile
+and are wrong. Tell the user to copy and fill it.
 
 ## Step 4 — Check the gate
 
@@ -129,7 +146,8 @@ Tell the user, concretely:
 - what was created;
 - the protected roots now in force;
 - whether the gate is green;
-- what is still on them: adjust `run.sh` if needed, fill `conventions.json` (flutter), turn on
+- what is still on them: adjust `run.sh` if needed, fill `conventions.json` when the stack
+  ships one, turn on
   CI (`docs/enforcement.md` has the workflow), and commit `.doe/` — it belongs in the repo, it
   is the process, not a local preference.
 
@@ -140,8 +158,8 @@ Then the first real instruction:
 
 ## Unsupported stack
 
-If the project is neither stack, do not fake it. Say what is missing — a `run.sh` and a
-`coverage.sh` for that toolchain — and offer to write them, using
+If no descriptor matches, do not fake it. Say what is missing — a `stack.json`, a `run.sh`
+and a `coverage.sh` for that toolchain — and offer to write them, using
 `${CLAUDE_PLUGIN_ROOT}/stacks/README.md` as the contract:
 
 - exit 0 if and only if everything passes;

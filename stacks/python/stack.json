@@ -1,0 +1,7 @@
+{
+  "name": "python",
+  "label": "Python (ruff · mypy · pytest)",
+  "markers": ["pyproject.toml", "setup.cfg"],
+  "protected_roots": ["src", "tests"],
+  "conventions": false
+}

@@ -65,7 +65,7 @@ SKIP_PATTERNS=(
 # Keep reason for $1, empty string when the file is not in the keep-list.
 keep_reason() {
   local f="$1" entry pat
-  for entry in "${KEEP_PATTERNS[@]}"; do
+  for entry in ${KEEP_PATTERNS[@]+"${KEEP_PATTERNS[@]}"}; do
     pat="${entry%%|*}"
     case "$f" in
       *"$pat"*) printf '%s' "${entry#*|}"; return 0 ;;
@@ -78,7 +78,7 @@ keep_reason() {
 skip_reason() {
   local f="$1" entry pat
   [ -n "$(keep_reason "$f")" ] && { printf ''; return 0; }
-  for entry in "${SKIP_PATTERNS[@]}"; do
+  for entry in ${SKIP_PATTERNS[@]+"${SKIP_PATTERNS[@]}"}; do
     pat="${entry%%|*}"
     case "$f" in
       *"$pat"*) printf '%s' "${entry#*|}"; return 0 ;;
@@ -89,12 +89,12 @@ skip_reason() {
 
 # The same substrings, one per line, for the KPI computation in awk.
 skip_pats=""
-for entry in "${SKIP_PATTERNS[@]}"; do
+for entry in ${SKIP_PATTERNS[@]+"${SKIP_PATTERNS[@]}"}; do
   skip_pats="${skip_pats}${entry%%|*}
 "
 done
 keep_pats=""
-for entry in "${KEEP_PATTERNS[@]}"; do
+for entry in ${KEEP_PATTERNS[@]+"${KEEP_PATTERNS[@]}"}; do
   keep_pats="${keep_pats}${entry%%|*}
 "
 done

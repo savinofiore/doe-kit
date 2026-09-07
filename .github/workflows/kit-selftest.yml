@@ -14,6 +14,9 @@ jobs:
           - stack: flutter
             roots: "lib/, test/"
             marker: pubspec.yaml
+          - stack: python
+            roots: "src/, tests/"
+            marker: pyproject.toml
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +24,40 @@ jobs:
         run: |
           bash -n install.sh
           for f in stacks/*/execution/*.sh; do bash -n "$f"; done
+
+      # A stack registers itself through stack.json alone. A descriptor that is missing,
+      # malformed or disagrees with its directory name makes the installer fall back to the
+      # wrong protected roots — the guard then watches a directory nobody writes to, which
+      # looks exactly like a guard that works.
+      - name: Stack descriptors are complete and consistent
+        run: |
+          python3 - stacks/*/ <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          required = {"name", "label", "markers", "protected_roots", "conventions"}
+          for raw in sys.argv[1:]:
+              d = Path(raw)
+              if d.name == "shared":
+                  continue
+              descriptor = d / "stack.json"
+              assert descriptor.is_file(), f"{d} has no stack.json"
+              data = json.loads(descriptor.read_text())
+              missing = required - data.keys()
+              assert not missing, f"{descriptor}: missing {sorted(missing)}"
+              assert data["name"] == d.name, f"{descriptor}: name != directory"
+              assert data["markers"], f"{descriptor}: no markers"
+              assert data["protected_roots"], f"{descriptor}: no protected_roots"
+              has_example = (d / "conventions.example.json").is_file()
+              assert data["conventions"] == has_example, \
+                  f"{descriptor}: conventions={data['conventions']} but example {'exists' if has_example else 'is missing'}"
+              assert (d / "README.md").is_file(), f"{d}: no README.md"
+              assert "## Gate" in (d / "README.md").read_text(), \
+                  f"{d}/README.md has no '## Gate' section — the installer copies it into .doe/README.md"
+              for script in ("run.sh", "coverage.sh"):
+                  assert (d / "execution" / script).is_file(), f"{d}: no execution/{script}"
+              print(f"{data['name']:<10} ok — roots {data['protected_roots']}")
+          PY
 
       - name: Build a fixture project
         run: |
@@ -50,6 +87,16 @@ jobs:
           test -d .codex/skills/directive
           test -f .codex/hooks.json
           .doe/execution/guard_selftest.py
+
+      - name: Installed roots match the descriptor
+        run: |
+          python3 - "stacks/${{ matrix.stack }}/stack.json" /tmp/fixture/.doe/doe.config.json <<'PY'
+          import json, sys
+          declared = json.load(open(sys.argv[1]))["protected_roots"]
+          installed = json.load(open(sys.argv[2]))["protected_roots"]
+          assert declared == installed, f"descriptor says {declared}, installer wrote {installed}"
+          print("roots agree:", installed)
+          PY
 
       - name: Guard is armed, with the right roots
         working-directory: /tmp/fixture
@@ -156,6 +203,64 @@ jobs:
           for s in riverpod-architect scaffold-feature fix-style test-plan test-run; do
             test -f ".claude/skills/$s/SKILL.md" || { echo "missing skill: $s"; exit 1; }
           done
+
+  # The per-file coverage check shares the guard's failure mode: when it breaks it turns
+  # nothing red, it just stops discriminating — and a gate that passes every file is a gate
+  # that reports green on untested code. This is the step that notices. It runs the parser
+  # exactly as it ships, extracted from coverage.sh rather than copied.
+  coverage-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python coverage check discriminates
+        run: |
+          set -e
+          mkdir -p /tmp/cov && cd /tmp/cov
+          sed -n "/<<'PY'/,/^PY\$/p" "$GITHUB_WORKSPACE/stacks/python/execution/coverage.sh" \
+            | sed '1d;$d' > parser.py
+          test -s parser.py
+
+          cat > coverage.xml <<'XML'
+          <?xml version="1.0" ?>
+          <coverage><packages><package><classes>
+            <class filename="src/full.py"><lines>
+              <line number="1" hits="1"/><line number="2" hits="1"/>
+            </lines></class>
+            <class filename="src/half.py"><lines>
+              <line number="1" hits="1"/><line number="2" hits="0"/>
+            </lines></class>
+            <class filename="src/empty.py"><lines></lines></class>
+          </classes></package></packages></coverage>
+          XML
+
+          # A file below the threshold, and a file the suite never imported, must both be red.
+          out=$(DOE_FILES=$'src/full.py\nsrc/half.py\nsrc/empty.py\nsrc/ghost.py\n' \
+                DOE_MIN=80 DOE_XML=coverage.xml python3 parser.py) && rc=0 || rc=$?
+          echo "$out"
+          [ "$rc" -eq 1 ]                              || { echo "under-threshold file passed"; exit 1; }
+          echo "$out" | grep -q '✗ src/half.py'        || { echo "50% not flagged at min 80"; exit 1; }
+          echo "$out" | grep -q '✗ src/ghost.py'       || { echo "unreported file not flagged"; exit 1; }
+          echo "$out" | grep -q '⊘ src/empty.py'       || { echo "zero-line file not skipped"; exit 1; }
+
+          # ...and a suite that meets the threshold must not be failed by the check itself.
+          DOE_FILES=$'src/full.py\n' DOE_MIN=80 DOE_XML=coverage.xml python3 parser.py \
+            || { echo "the check failed a file at 100%"; exit 1; }
+
+          # coverage.py writes paths relative to each <source> root, so the lookup has to
+          # match on suffix as well as on equality.
+          cat > rel.xml <<'XML'
+          <?xml version="1.0" ?>
+          <coverage><packages><package><classes>
+            <class filename="half.py"><lines>
+              <line number="1" hits="1"/><line number="2" hits="0"/>
+            </lines></class>
+          </classes></package></packages></coverage>
+          XML
+          DOE_FILES=$'src/half.py\n' DOE_MIN=40 DOE_XML=rel.xml python3 parser.py \
+            || { echo "package-relative path not matched"; exit 1; }
+
+          echo "coverage check discriminates"
 
   i18n-validator:
     runs-on: ubuntu-latest

@@ -1,30 +1,58 @@
 # Stacks
 
 A stack adapter is small on purpose. The method, the templates, the guard and the skills are
-stack-agnostic; a stack only has to answer two questions:
+stack-agnostic; a stack only has to answer three questions:
 
 1. **What is the gate?** → `execution/run.sh`, exit 0 or non-zero.
 2. **What counts as covered?** → `execution/coverage.sh`.
+3. **What is this toolchain called, and where does its code live?** → `stack.json`.
 
 | Stack | Gate | Protected roots |
 |---|---|---|
 | [`web-ts`](web-ts/) | `tsc --noEmit` + `eslint` + `vitest run` | `src/`, `tests/` |
 | [`flutter`](flutter/) | `flutter analyze` + `flutter test` | `lib/`, `test/` |
+| [`python`](python/) | `mypy` + `ruff check` + `pytest` | `src/`, `tests/` |
 | [`shared`](shared/) | — (convention skills only, installed with every stack) | — |
 
 ## Adding a stack
 
 ```
 stacks/<name>/
+├── stack.json           the descriptor — name, label, markers, protected_roots, conventions
 ├── README.md            must contain a "## Gate" section — the installer copies it into .doe/README.md
+├── skills.txt           which of skills/ this stack installs (a comment-only file is fine)
 ├── execution/
 │   ├── run.sh           fast gate: static analysis + lint + unit suite
 │   └── coverage.sh      full gate: + per-file coverage threshold on changed files
-└── skills/              optional: stack-specific convention skills
+└── conventions.example.json   optional: only if the stack ships convention-driven skills
 ```
 
-Then add the protected roots to the `case` in `install.sh`, and to the auto-detection in
-`core/execution/directive_guard.py` if the stack has an unambiguous marker file.
+That is the whole registration. `install.sh` reads `stack.json` for the label and the
+protected roots, `/init` reads every descriptor to list the stacks it can set up, and
+`--help` prints them — **nothing has to be edited outside the new directory.**
+
+```json
+{
+  "name": "python",
+  "label": "Python (ruff · mypy · pytest)",
+  "markers": ["pyproject.toml", "setup.cfg"],
+  "protected_roots": ["src", "tests"],
+  "conventions": false
+}
+```
+
+| field | what it is for |
+|---|---|
+| `name` | must equal the directory name — it is the `--stack` argument |
+| `label` | one line, shown by `--help` and by the installer |
+| `markers` | files that identify the stack in an unknown repo. `/init` matches on these |
+| `protected_roots` | production code + tests. Written verbatim into `.doe/doe.config.json` |
+| `conventions` | `true` when `conventions.example.json` ships alongside |
+
+The one exception: if the new stack's roots are **not** `src`/`tests`, add its marker to
+`ROOT_MARKERS` in `core/execution/directive_guard.py`. That table is a fallback for a repo
+that wired the hook by hand and never ran the installer — an installed project reads
+`.doe/doe.config.json`, which already came from your descriptor.
 
 ### What `run.sh` must guarantee
 
@@ -47,7 +75,7 @@ Then add the protected roots to the `case` in `install.sh`, and to the auto-dete
 
 ## Language-agnostic sketch
 
-Any language works if it can answer the two questions. A Python stack, for instance:
+Any language works if it can answer those questions. A Go stack, for instance:
 
 ```bash
 #!/usr/bin/env bash
@@ -57,12 +85,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"; cd "$ROOT"
 FAILED=()
 step() { local l="$1"; shift; if "$@"; then echo "✓ $l"; else echo "✗ $l"; FAILED+=("$l"); fi; }
 
-step "typecheck" mypy src
-step "lint"      ruff check .
-step "test"      pytest -q "$@"
+step "vet"   go vet ./...
+step "lint"  golangci-lint run
+step "test"  go test ./... "$@"
 
 [[ ${#FAILED[@]} -eq 0 ]] && { echo "GATE GREEN"; exit 0; }
 echo "GATE RED — failed: ${FAILED[*]}"; exit 1
 ```
 
-That is the whole contract.
+Plus five lines of `stack.json`. That is the whole contract.

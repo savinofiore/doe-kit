@@ -25,8 +25,8 @@ Configuration — `.doe/doe.config.json` at the repo root:
 
     { "protected_roots": ["lib", "test"] }
 
-Falls back to `DOE_PROTECTED_ROOTS` (comma-separated), then to auto-detection
-(`lib`+`test` if a `pubspec.yaml` exists, otherwise `src`+`tests`).
+Falls back to `DOE_PROTECTED_ROOTS` (comma-separated), then to auto-detection from the
+marker table in `ROOT_MARKERS` (`src`+`tests` when nothing matches).
 
 Wiring: `.claude/settings.json` → hooks.PreToolUse.
 
@@ -64,7 +64,17 @@ CONFIG_FILE = Path(".doe/doe.config.json")
 TEMPLATE_PREFIX = "00_"
 
 DEFAULT_ROOTS = ("src", "tests")
-DART_ROOTS = ("lib", "test")
+
+# Auto-detection, the last resort. It only runs on a project that wired the hook by hand and
+# never ran `install.sh` — an installed project has `.doe/doe.config.json`, written from
+# `stacks/<stack>/stack.json`, which is the real source of truth for the roots.
+#
+# One entry per stack whose layout differs from DEFAULT_ROOTS; the first marker present wins.
+# Adding a stack means adding its `stack.json` and, if its roots are not src/tests, one line
+# here — nothing else in core knows the name of any toolchain.
+ROOT_MARKERS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("pubspec.yaml", ("lib", "test")),
+)
 
 
 # ── configuration ───────────────────────────────────────────────────────────────
@@ -86,8 +96,9 @@ def protected_roots(root: Path) -> tuple[str, ...]:
     if env:
         return tuple(part.strip().strip("/") for part in env.split(",") if part.strip())
 
-    if (root / "pubspec.yaml").is_file():
-        return DART_ROOTS
+    for marker, roots in ROOT_MARKERS:
+        if (root / marker).is_file():
+            return roots
     return DEFAULT_ROOTS
 
 
