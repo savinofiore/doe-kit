@@ -89,7 +89,7 @@
       "fontSize": ".sp",
       "radius": ".w",
       "allowed": ["double.infinity", "MediaQuery.of(context).size", "0"],
-      "comment": "Set library to null when the project sizes things directly."
+      "comment": "Two shapes, pick one. (a) An extension suffix, as above: set `library` and the .w/.h/.sp members. (b) An accessor class: set `library` to null and give `class`, `callForm` and a `byValue` map from design value to token member, exactly like `radii` below — for a project whose sizes come from KResponsiveSizes.spacingMedium(context) rather than 16.w."
     }
   },
 

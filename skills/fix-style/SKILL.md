@@ -68,16 +68,31 @@ token is **allowed** and must not be flagged.
 grep -rn "TextStyle(" lib/ --include="*.dart" | grep -v "<textStyles.class>" | grep -v ".copyWith"
 ```
 
-### 3. Dimensions without the sizing extension
+### 3. Hardcoded dimensions
 
-Only when `tokens.sizing.library` is set. Violations: numeric literals for width, height, font
-size, padding, margin without the configured extension.
+Design systems express sizing in one of two shapes, and `tokens.sizing` says which this project
+uses. Run the branch that matches the config; if neither key is set, the rule is off.
+
+**(a) Extension suffix** — when `tokens.sizing.library` is set (flutter_screenutil,
+react-native-size-matters and the like). Violations: numeric literals for width, height, font
+size, padding or margin without the configured suffix.
 
 Fix: append `tokens.sizing.width` / `.height` / `.fontSize`.
 
-**Never flag** anything in `tokens.sizing.allowed` (typically `double.infinity`, `MediaQuery`
-sizes, and zero). Zero especially: `height: 0` scaled is still zero, and flagging it is noise
-that trains people to ignore the report.
+**(b) Accessor class** — when `tokens.sizing.class` and `tokens.sizing.byValue` are set and
+`library` is `null`. The project exposes named tokens instead of scaling raw numbers, so a
+literal is a violation even though no suffix is missing. Violations: a numeric literal whose
+value appears in `byValue`.
+
+Fix: the mapped member, through `tokens.sizing.callForm`.
+
+A value **not** in `byValue` is a different finding, the same one as an off-scale radius:
+report it as an off-scale dimension and ask whether it should become a token. Snapping it to
+the nearest one silently is how a spacing scale stops being a scale.
+
+Both shapes: **never flag** anything in `tokens.sizing.allowed` (typically `double.infinity`,
+viewport-derived sizes, and zero). Zero especially — scaled or tokenised, zero is still zero,
+and flagging it is noise that trains people to ignore the report.
 
 ### 4. Hardcoded border radii
 
