@@ -8,7 +8,7 @@
 
 <p>
   <a href="https://github.com/savinofiore/doe-kit/actions/workflows/kit-selftest.yml"><img alt="kit self-test" src="https://img.shields.io/github/actions/workflow/status/savinofiore/doe-kit/kit-selftest.yml?branch=main&style=flat-square&label=self-test&labelColor=1f2328"></a>
-  <a href="https://github.com/savinofiore/doe-kit/releases"><img alt="version" src="https://img.shields.io/badge/version-0.2.0-4c6ef5?style=flat-square&labelColor=1f2328"></a>
+  <a href="https://github.com/savinofiore/doe-kit/releases"><img alt="version" src="https://img.shields.io/badge/version-0.2.1-4c6ef5?style=flat-square&labelColor=1f2328"></a>
   <a href="#install"><img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-d97757?style=flat-square&labelColor=1f2328"></a>
   <img alt="skills" src="https://img.shields.io/badge/skills-17-1a7f37?style=flat-square&labelColor=1f2328">
   <img alt="stacks" src="https://img.shields.io/badge/stacks-flutter%20·%20web--ts%20·%20python-59636e?style=flat-square&labelColor=1f2328">
@@ -115,6 +115,18 @@ codex plugin add doe-kit@doe-kit
 Then start a new Codex task and ask it to “set up DOE for this project” (or run the installed
 `init` skill). Codex plugin manifests currently package skills, while the write guard is a
 project hook; `install.sh` wires it into `.codex/hooks.json` along with `.codex/skills/`.
+
+**Or as a Pi package** — install globally from GitHub, with no local clone:
+
+```bash
+pi install git:github.com/savinofiore/doe-kit
+```
+
+Pi loads namespaced commands to avoid collisions with other skill packages:
+`/skill:doe-init`, `/skill:doe-directive`, `/skill:doe-execute`, and the
+remaining skills under `/skill:doe-*`. The Pi extension enforces the directive
+guard for `edit`, `write`, and shell writes. Restart Pi after installation, then
+run `/skill:doe-init` in each project to opt it in.
 
 ### Verify
 
