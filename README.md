@@ -11,7 +11,7 @@
   <a href="https://github.com/savinofiore/doe-kit/releases"><img alt="version" src="https://img.shields.io/badge/version-0.2.0-4c6ef5?style=flat-square&labelColor=1f2328"></a>
   <a href="#install"><img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-d97757?style=flat-square&labelColor=1f2328"></a>
   <img alt="skills" src="https://img.shields.io/badge/skills-17-1a7f37?style=flat-square&labelColor=1f2328">
-  <img alt="stacks" src="https://img.shields.io/badge/stacks-flutter%20·%20web--ts-59636e?style=flat-square&labelColor=1f2328">
+  <img alt="stacks" src="https://img.shields.io/badge/stacks-flutter%20·%20web--ts%20·%20python-59636e?style=flat-square&labelColor=1f2328">
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-9a6700?style=flat-square&labelColor=1f2328"></a>
   <img alt="dependencies" src="https://img.shields.io/badge/deps-python3%20%2B%20git-59636e?style=flat-square&labelColor=1f2328">
 </p>
@@ -78,7 +78,8 @@ correctness, and the only cheap way to tell them apart is a gate it cannot argue
 curl -fsSL https://raw.githubusercontent.com/savinofiore/doe-kit/main/install.sh | bash -s -- --stack flutter
 ```
 
-`--stack web-ts` for TypeScript. It clones itself to a temp dir, writes `.doe/`, Claude and
+`--stack web-ts` for TypeScript, `--stack python` for Python; `--help` lists them. It clones
+itself to a temp dir, writes `.doe/`, Claude and
 Codex skill directories, merges each agent's hook configuration without touching existing
 settings, and cleans up after itself.
 
@@ -193,13 +194,15 @@ hooks/hooks.json     the PreToolUse guard, for the plugin path
 .agents/plugins/     Codex marketplace manifest
 
 core/
-├── templates/       00_FEATURE · 00_BUG · 00_REVIEW directive templates
+├── templates/       00_FEATURE · 00_BUG · 00_REVIEW directives + 00_COVERAGE_ROADMAP
 └── execution/       directive_guard.py · guard_selftest.py     (stack-agnostic)
 
-stacks/
+stacks/              each one registers itself with a stack.json — nothing outside its own
+│                    directory knows the name of any toolchain
 ├── web-ts/          run.sh · coverage.sh · coverage-check.mjs + frontend/backend standards
 ├── flutter/         run.sh · coverage.sh + riverpod-architect · scaffold-feature · fix-style
 │                    · test-plan · test-run, driven by .doe/conventions.json
+├── python/          run.sh · coverage.sh  (mypy · ruff · pytest)
 └── shared/          ui-standards · i18n-translator (+ a validator that fails CI)
 
 bench/               the token/quality benchmark harness — tasks, runner, analysis
@@ -241,6 +244,28 @@ docs/                methodology · workflow · enforcement · coverage-gate · 
 > **Per-file coverage on changed files only.** A repo at 15% global coverage can adopt this
 > today. It does not demand a retroactive testing project — it demands that new work arrives
 > covered.
+
+---
+
+## Adding your stack
+
+The method, the guard, the templates and the core skills know nothing about any toolchain.
+A stack is a directory that describes itself, and registering it means creating that
+directory — `install.sh`, `/init` and `--help` pick it up with no edit anywhere else:
+
+```
+stacks/<name>/
+├── stack.json       name · label · markers · protected_roots · conventions
+├── README.md        a "## Gate" section, copied into the project's .doe/README.md
+├── skills.txt       which skills this stack installs (may be empty)
+└── execution/
+    ├── run.sh       the gate: exit 0 if and only if everything passes
+    └── coverage.sh  + a per-changed-file coverage threshold
+```
+
+The contract those two scripts must honour — deterministic, offline, narrowable by path,
+every coverage exclusion logged with its reason — is in
+**[stacks/README.md](stacks/README.md)**.
 
 ---
 
