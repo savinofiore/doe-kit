@@ -323,6 +323,38 @@ jobs:
           python3 -c "import json; json.load(open('hooks/hooks.json'))"
           grep -q 'CLAUDE_PLUGIN_ROOT' hooks/hooks.json
 
+      # The fixture check covers what the installer copies. This one covers the source tree,
+      # because a skill can shadow a bundled command without ever reaching a fixture — and a
+      # shadowed command fails silently, by running the wrong thing.
+      #
+      # `init` is the one deliberate exception: no manifest lists it, so the installer never
+      # copies it, and the plugin exposes it namespaced as /doe-kit:init. Renaming it to
+      # doe-init would make the plugin command /doe-kit:doe-init to fix a collision that
+      # cannot happen. The exception is written down here so the next one is a decision
+      # rather than an oversight.
+      - name: No skill in the tree shadows a bundled command
+        run: |
+          set -e
+          RESERVED="review code-review simplify run loop verify batch debug doctor dataviz init"
+          NAMESPACED_ONLY="init"
+          listed=$(cat core/skills.txt stacks/*/skills.txt 2>/dev/null | sed 's/#.*//' | tr -d ' ' | grep -v '^$')
+          for d in skills/*/; do
+            name=$(basename "$d")
+            for r in $RESERVED; do
+              [ "$name" = "$r" ] || continue
+              case " $NAMESPACED_ONLY " in
+                *" $name "*)
+                  # Allowed only while no manifest installs it under its bare name.
+                  echo "$listed" | grep -qx "$name" \
+                    && { echo "'$name' shadows bundled '$r' AND a manifest installs it"; exit 1; }
+                  echo "  $name: namespaced-only, not installed — allowed"
+                  ;;
+                *) echo "skill '$name' collides with bundled '$r'"; exit 1 ;;
+              esac
+            done
+          done
+          echo "no unintended collisions"
+
       # Every skill named by a manifest must exist, and every skill must be reachable from
       # one of them — otherwise the installer and the plugin ship different sets.
       - name: Skill manifests cover the skills tree

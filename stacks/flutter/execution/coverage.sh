@@ -57,10 +57,13 @@ SKIP_PATTERNS=(
   "lib/repositories/interfaces/|abstract classes and typedefs: no body to execute"
   "lib/providers/route/route_provider.dart|GoRouter + builder with BuildContext: needs a widget tree"
 )
-# Note on the plugin patterns: they are anchored to the file-name PREFIX (`/firebase_`) and
-# not to the bare substring. With a bare substring, a future pure-logic file such as
-# lib/utils/firebase_message_parser.dart would silently drop out of the measurement, inside
-# folders the README declares "stay measured".
+# Note on the plugin patterns: they are anchored to the file-name PREFIX (`/firebase_`) and not
+# to the bare substring, so a pure-logic file that merely mentions the vendor mid-name — say
+# lib/utils/my_firebase_helper.dart — stays measured inside folders the README declares "stay
+# measured". The anchoring stops there, and it is worth being exact about the limit: a file
+# whose NAME starts with the prefix is still swallowed, pure logic or not
+# (lib/utils/firebase_message_parser.dart would be skipped). Put that file on the keep-list;
+# do not loosen the pattern, or the plugins it exists to exclude come back in with it.
 
 # Keep reason for $1, empty string when the file is not in the keep-list.
 keep_reason() {

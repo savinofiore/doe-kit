@@ -143,7 +143,7 @@ immediately — the settings watcher picks it up, no restart — and `/hooks` sh
 |---|---|
 | `/directive` | Phase 1 — interview, spec, Test Contract. Zero code |
 | `/execute` | Phase 2 — baseline → RED → fix → green gate → cleanup |
-| `/doe-review` | Branch/PR review, findings split by testability |
+| `/doe-review` | Branch/PR review — delegates bug-hunting to the host's reviewer, splits findings by testability |
 | `/doe-review-fix` | Applies them on two tracks: directives, and direct fixes |
 | `/diagnose` | Three competing hypotheses, minimal logging, no fix until proven |
 | `/delta-check` | Read-only convention check on the branch delta only |
