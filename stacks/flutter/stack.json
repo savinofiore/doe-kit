@@ -1,0 +1,19 @@
+{
+  "name": "flutter",
+  "label": "Flutter / Dart",
+
+  "_comment": [
+    "The stack descriptor. Single source of truth for everything the kit needs to know",
+    "about a toolchain: install.sh, the /init skill and the guard's auto-detection all",
+    "read this file instead of carrying a per-stack branch of their own.",
+    "",
+    "markers          files whose presence identifies the stack in an unknown repo.",
+    "protected_roots  production code + tests. Written verbatim into .doe/doe.config.json,",
+    "                 which is what the guard actually reads on an installed project.",
+    "conventions      true when the stack ships conventions.example.json."
+  ],
+
+  "markers": ["pubspec.yaml"],
+  "protected_roots": ["lib", "test"],
+  "conventions": true
+}

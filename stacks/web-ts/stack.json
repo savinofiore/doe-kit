@@ -1,0 +1,7 @@
+{
+  "name": "web-ts",
+  "label": "TypeScript (Node / React / Next)",
+  "markers": ["tsconfig.json", "package.json"],
+  "protected_roots": ["src", "tests"],
+  "conventions": false
+}

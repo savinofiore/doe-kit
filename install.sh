@@ -13,7 +13,7 @@
 # Copies into the target project:
 #   .doe/README.md            the method, where the agent will read it
 #   .doe/doe.config.json      protected roots
-#   .doe/directives/          the three templates
+#   .doe/directives/          the directive templates + the coverage roadmap
 #   .doe/execution/           guard + self-test (core) and gate scripts (stack)
 #   .claude/skills/           the DOE skills for Claude Code (core + stack)
 #   .claude/settings.json     the Claude PreToolUse hook, merged into existing settings
@@ -45,6 +45,17 @@ if [[ -z "$KIT" || ! -f "$KIT/core/execution/directive_guard.py" ]]; then
   trap 'rm -rf "$(dirname "$KIT")"' EXIT
 fi
 
+# Reads one field out of a stack descriptor. `stacks/<name>/stack.json` is the single source
+# of truth for a toolchain — protected roots, markers, label — so that adding a stack never
+# means editing this script or the guard.
+stack_field() {
+  python3 -c '
+import json, sys
+value = json.load(open(sys.argv[1])).get(sys.argv[2], "")
+print(json.dumps(value, separators=(", ", ": ")) if isinstance(value, list) else value)
+' "$1" "$2"
+}
+
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'; BOLD=$'\033[1m'; OFF=$'\033[0m'
 if [[ ! -t 1 ]]; then RED=""; GREEN=""; YELLOW=""; BOLD=""; OFF=""; fi
 
@@ -57,7 +68,11 @@ NEEDS_CONVENTIONS=0
 usage() {
   sed -n '3,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   echo
-  echo "Available stacks: $(/bin/ls -1 "$KIT/stacks" | grep -vE '\.md$|^shared$' | tr '\n' ' ')"
+  echo "Available stacks:"
+  for d in "$KIT"/stacks/*/stack.json; do
+    [[ -f "$d" ]] || continue
+    printf '  %-10s %s\n' "$(stack_field "$d" name)" "$(stack_field "$d" label)"
+  done
 }
 
 while [[ $# -gt 0 ]]; do
@@ -75,13 +90,18 @@ done
 TARGET="${TARGET:-.}"   # the one-liner runs inside the project it is installing into
 
 STACK_DIR="$KIT/stacks/$STACK"
-[[ -d "$STACK_DIR" && "$STACK" != "shared" ]] \
+[[ -f "$STACK_DIR/stack.json" && "$STACK" != "shared" ]] \
   || { echo "${RED}unknown stack: $STACK${OFF}" >&2; usage; exit 64; }
+
+STACK_LABEL="$(stack_field "$STACK_DIR/stack.json" label)"
+ROOTS="$(stack_field "$STACK_DIR/stack.json" protected_roots)"
+[[ -n "$ROOTS" && "$ROOTS" != '""' ]] \
+  || { echo "${RED}$STACK/stack.json declares no protected_roots${OFF}" >&2; exit 65; }
 
 TARGET="$(cd "$TARGET" && pwd)"
 [[ -d "$TARGET" ]] || { echo "${RED}target does not exist: $TARGET${OFF}" >&2; exit 66; }
 
-echo "${BOLD}DOE Kit${OFF} → $TARGET  (stack: $STACK)"
+echo "${BOLD}DOE Kit${OFF} → $TARGET  (stack: $STACK — $STACK_LABEL)"
 [[ $DRY -eq 1 ]] && echo "${YELLOW}dry run: nothing will be written${OFF}"
 echo
 
@@ -146,12 +166,7 @@ else
   echo "  ${GREEN}ok${OFF}    .doe/README.md"
 fi
 
-# Protected roots, per stack.
-case "$STACK" in
-  flutter) ROOTS='["lib", "test"]' ;;
-  *)       ROOTS='["src", "tests"]' ;;
-esac
-
+# Protected roots come from the stack descriptor, read above.
 if [[ -e "$TARGET/.doe/doe.config.json" && $FORCE -eq 0 ]]; then
   echo "  ${YELLOW}skip${OFF}  .doe/doe.config.json  (exists)"
 elif [[ $DRY -eq 1 ]]; then
