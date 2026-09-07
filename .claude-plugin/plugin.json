@@ -1,7 +1,7 @@
 {
   "name": "doe-kit",
   "description": "Directive-first, test-driven workflow for coding agents. Blocks writes to your source tree until a spec is written and approved, then drives it red-to-green through a deterministic gate.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "Savino Fiore"
   },

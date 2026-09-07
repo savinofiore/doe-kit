@@ -1,0 +1,16 @@
+{
+  "name": "doe-kit",
+  "version": "0.2.1",
+  "description": "Directive-first, test-driven workflow and write guard for coding agents.",
+  "license": "MIT",
+  "keywords": ["pi-package", "tdd", "test-driven", "workflow", "flutter", "typescript"],
+  "repository": "https://github.com/savinofiore/doe-kit",
+  "files": ["pi", "core", "stacks", "skills", "README.md", "LICENSE"],
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": ["./pi/extensions"],
+    "skills": ["./pi/skills"]
+  }
+}
