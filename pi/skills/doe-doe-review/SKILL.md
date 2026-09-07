@@ -1,6 +1,6 @@
 ---
 name: doe-doe-review
-description: Analysis-only branch/PR review. Classifies findings by severity AND by testability, materialises one DOE directive per tier for the logic findings, and reports the non-testable ones as direct fixes. Never edits code. Use for "review this branch", "review my diff", "PR review".
+description: Analysis-only branch/PR review that routes findings into the DOE process. Delegates bug-hunting to the host's own code reviewer when there is one, adds the passes it cannot do (design tokens, i18n, responsive), then splits every finding by testability — one DOE directive per tier for the logic ones, direct fixes for the rest. Never edits code. Use for "review this branch", "review my diff", "PR review".
 ---
 
 > **Pi:** invoke this skill with `/skill:doe-doe-review`.
@@ -48,26 +48,55 @@ gate rule):
 When in doubt: if you cannot write an offline unit test that turns red for that finding, it is
 non-testable → direct fix.
 
+## Do not re-implement the host's reviewer
+
+Most agent hosts already ship a code reviewer, and it is better at finding bugs than a
+checklist in a skill file: Claude Code has the bundled `/code-review`, which walks the diff at
+a chosen effort level, ranks findings by severity, verifies them adversarially before
+reporting, and can post them as inline PR comments.
+
+**None of that is what this skill is for.** What no bundled reviewer can do is decide whether a
+finding belongs in a directive with a red test or in a direct fix — because that depends on the
+DOE gate, and on `.doe/conventions.json` for the design system. That routing is the whole value
+here.
+
+So: get the findings from the host's reviewer where one exists, add the passes it cannot make,
+and spend this skill's effort on the split. Re-deriving severity and re-walking the diff by hand
+produces a worse review and calls it integration.
+
 ## Workflow
 
-### Step 1 — Identify changed files
+### Step 1 — Collect the findings
+
+**When the host ships a reviewer, use it.** In Claude Code:
+
+```
+/code-review <base>          # or a PR number, or no argument for the current diff
+```
+
+Take its findings as the input to Step 4. Do not re-review what it already reported, and do not
+re-rank it — its severities carry over.
+
+**When it does not** (Codex, Pi, or a bare CLI), walk the diff yourself against the fallback
+checklist below:
 
 ```bash
 git diff <base>...HEAD --name-only
 git diff <base>...HEAD --stat
-```
-
-### Step 2 — Analyse the full diff
-
-```bash
 git diff <base>...HEAD
 ```
 
-Read the diff and analyse every change against the checklist below.
+### Step 2 — Add the passes the host's reviewer cannot make
+
+A generic reviewer does not know this project's design system, translation call or breakpoints,
+so it will not flag their violations however hard it looks. Run the **project-convention
+checks** below against the diff, always — including after `/code-review`, whose findings will
+not contain them.
 
 ### Step 3 — Run the project's static analysis on the changed files
 
-Filter to the errors/warnings introduced by this branch; ignore pre-existing ones.
+Filter to the errors/warnings introduced by this branch; ignore pre-existing ones. Skip this
+when the host's reviewer already ran it and reported the result.
 
 ### Step 4 — Classify the problems found
 
@@ -97,13 +126,39 @@ confirmation before doing anything else.
 
 ### Step 7 — Post to GitHub (only if asked)
 
+If the host's reviewer can post inline comments itself — `/code-review <pr> --comment` in Claude
+Code — prefer that: a comment anchored to the line beats a wall of text in the thread. Otherwise:
+
 1. Find the PR: `gh pr list --head $(git branch --show-current) --json number -q '.[0].number'`
 2. If not found, ask for the PR number.
 3. Post with `gh pr comment <number> --body "<review>"`.
 
 Never post without explicit user confirmation.
 
-## Review checklist
+## Project-convention checks (always run — Step 2)
+
+These need `.doe/conventions.json`. No bundled reviewer can make them, so they are this skill's
+own work whether or not one ran first. If the config is missing, say so and skip the section
+rather than guessing another project's tokens.
+
+### Styling and theming
+
+- No hardcoded colours, text styles, sizes, radii, aspect ratios → the project's design tokens
+  from `tokens` in the config.
+
+### Responsive
+
+- Breakpoint helpers used where the layout demands it.
+
+### Localisation
+
+- No user-visible hardcoded strings → the project's translation call from `i18n`, with the keys
+  present in the translation files.
+
+## Fallback checklist (Step 1, only when the host has no reviewer)
+
+Skip this entirely after `/code-review`: it is what that command already does, and re-running it
+by hand adds cost and subtracts accuracy.
 
 ### Architecture
 
@@ -127,19 +182,6 @@ Never post without explicit user confirmation.
 - No side effects, no business logic in the UI layer.
 - Naming conventions respected.
 
-### Styling and theming
-
-- No hardcoded colours, text styles, sizes, radii, aspect ratios → the project's design tokens.
-
-### Responsive
-
-- Breakpoint helpers used where the layout demands it.
-
-### Localisation
-
-- No user-visible hardcoded strings → the project's translation call, with the keys present in
-  the translation files.
-
 ## Bug classification
 
 | Weight | Level | Tag | Definition |
@@ -148,6 +190,9 @@ Never post without explicit user confirmation.
 | **7** | Major | `[P7 Major]` | Feature broken or unusable |
 | **4** | Minor | `[P4 Minor]` | Works, but with defects or badly handled edge cases |
 | **1** | Cosmetic | `[P1 Cosmetic]` | Copy, colours, alignment — nothing functional |
+
+When the findings came from the host's reviewer, keep the severities it assigned. Re-ranking
+someone else's verified findings is churn that changes the report without improving it.
 
 Format for each finding:
 

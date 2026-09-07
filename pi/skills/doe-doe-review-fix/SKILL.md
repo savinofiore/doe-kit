@@ -30,6 +30,16 @@ With no review to work from:
 - **Track B — direct fixes (Block B).** Non-testable findings (styling, cosmetic, responsive,
   i18n): applied with `Edit`, outside the gate, with static analysis as the only check.
 
+### Why not the host's `--fix`
+
+Claude Code's `/code-review --fix` applies findings straight to the working tree. For a Block B
+finding that is the same work this skill does, and using it is fine. For a **Block A** finding
+it is not: it writes a logic fix into the protected roots with no directive and no red test —
+which is the one thing the whole process exists to prevent. The directive-guard will refuse the
+write anyway, so the practical result is a half-applied review.
+
+Track A is the reason this skill exists. Route logic findings through it, always.
+
 ## Workflow
 
 ### Step 1 — Confirm scope
