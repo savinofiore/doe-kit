@@ -323,6 +323,13 @@ jobs:
           python3 -c "import json; json.load(open('hooks/hooks.json'))"
           grep -q 'CLAUDE_PLUGIN_ROOT' hooks/hooks.json
 
+      # The Pi package ships namespaced copies of the same skills. They are generated, so
+      # they rot the moment a skill is edited and the copy is not regenerated — and a stale
+      # copy breaks no build, it just quietly teaches the old process. This is the step that
+      # notices: regenerate, and demand the result be identical to what is committed.
+      - name: pi/skills is in sync with skills
+        run: ./pi/sync-skills.sh --check
+
       # The fixture check covers what the installer copies. This one covers the source tree,
       # because a skill can shadow a bundled command without ever reaching a fixture — and a
       # shadowed command fails silently, by running the wrong thing.
